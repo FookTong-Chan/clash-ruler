@@ -69,7 +69,9 @@ ENTITY_PATTERNS = [
     ("雪球", ["snowball-x", "snowballsecurities", "snbsecurities"]),
     ("盈透", ["interactivebrokers"]),
     ("Schwab", ["schwab"]),
+    # 内地券商的香港子公司：统一走代理（与华泰HK 同规则）
     ("华泰HK", ["htsc.com.hk"]),
+    ("东方财富HK", ["emsec.hk"]),
     # ---- 中国内地券商 ----
     ("同花顺", ["10jqka", "iwencai", "hexin", "hexun", "ths", "hithink",
               "zhifutech", "aicubes", "voiceclub", "gtimg", "sinajs", "hxkba",
@@ -77,14 +79,15 @@ ENTITY_PATTERNS = [
               "51ifind", "5ifund", "yingfund", "huntgold", "touzime",
               "tdx.com.cn", "gw.com.cn", "ip-api"]),
     ("东方财富", ["eastmoney", "dfcfw", "dfcfs", "caifutong", "caimi",
-               "dingqibao", "dongfanglicaishi", "emsec", "guba", "haitunzhibo",
+               "dingqibao", "dongfanglicaishi", "guba", "haitunzhibo",
                "huoqibao", "langke", "samacn", "tiantianfunds", "txjhqh",
                "uufund", "xzsec", "zhaiba", "zhongcaisuo", "1234567", "95021"]),
     ("华泰", ["htsc", "zhangle", "htzq", "zhangleglobal", "ihtfin",
              "cmpassport", "finet", "roadshowing"]),
 ]
 
-HK_ENTITIES = {"富途·moomoo", "长桥", "老虎", "雪球", "盈透", "Schwab", "华泰HK"}
+HK_ENTITIES = {"富途·moomoo", "长桥", "老虎", "雪球", "盈透", "Schwab",
+               "华泰HK", "东方财富HK"}
 
 # 中国大陆运营商 / 云厂商网段（华泰、同花顺的国内服务器）。
 # 不在其中的 IP 段一律归入香港/海外组。

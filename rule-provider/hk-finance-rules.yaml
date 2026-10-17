@@ -1,7 +1,7 @@
 # 金融规则集 - 香港及海外券商
 # 同步自 https://github.com/koo17173/rule-set @ main
 #   BrokerHK / HK_Broker.conf / BrokerCN / BrokerHT / Stocks.list / StocksHK.list
-# 统计：DOMAIN 23 / DOMAIN-SUFFIX 97 / DOMAIN-KEYWORD 8 / IP-CIDR 53
+# 统计：DOMAIN 23 / DOMAIN-SUFFIX 98 / DOMAIN-KEYWORD 8 / IP-CIDR 53
 
 rules:
   # ---- 精确域名（行情/交易/OpenAPI 端点） ----
@@ -126,6 +126,7 @@ rules:
   - DOMAIN-SUFFIX,schwab.com.cn
   - DOMAIN-SUFFIX,schwab.com.hk
   - DOMAIN-SUFFIX,schwab.co.uk
+  - DOMAIN-SUFFIX,emsec.hk
   - DOMAIN-SUFFIX,htsc.com.hk
 
   # ---- 域名关键词（富途 moomoo 兜底） ----
