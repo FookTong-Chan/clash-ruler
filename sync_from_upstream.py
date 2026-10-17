@@ -1,28 +1,27 @@
 #!/usr/bin/env python3
 """
-从上游 koo17173/rule-set 实时抓取金融规则 → 合并去重 → 重建 mrs → 有变化则推送。
+从上游 koo17173/rule-set 实时抓取金融规则 → 按机构归类拆分 → 重建 mrs → 有变化则推送。
 
-与 scripts/merge_finance.py 的区别：
-  merge_finance.py   规则硬编码在常量里，只用于一次性生成/留档
-  本脚本              每次运行都从上游拉取最新内容
+产出两组规则集（每组含 domain + ipcidr 两个 mrs）：
+  cn-finance-*  中国内地券商：同花顺、东方财富、华泰        → 建议 DIRECT
+  hk-finance-*  香港及海外券商：富途/moomoo、长桥、老虎、
+                雪球、盈透、Schwab、华泰HK                 → 建议代理
 
 用法:
-  python3 sync_from_upstream.py            # 抓取 + 合并 + 构建 + 推送
-  python3 sync_from_upstream.py --dry-run  # 只抓取合并，不推送（看差异）
+  python3 sync_from_upstream.py            # 抓取 + 归类 + 构建 + 推送
+  python3 sync_from_upstream.py --dry-run  # 只抓取归类，不推送
+  python3 sync_from_upstream.py --no-push  # 构建并本地提交，但不 push（CI 用）
 
-安全策略：任一上游文件抓取失败、或合并结果为空时，直接中止，
+安全策略：任一上游文件抓取失败、或某组结果为空时，直接中止，
 不改动本地文件、不提交——绝不允许空规则集覆盖已有内容。
 """
 import argparse
 import base64
 import ipaddress
-import json
 import os
 import shutil
 import subprocess
 import sys
-import tarfile
-import tempfile
 from collections import OrderedDict
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -32,7 +31,6 @@ BASE = os.path.join(REPO, "rule-provider")
 UPSTREAM = "koo17173/rule-set"
 REF = "main"
 
-# 参与合并的上游文件（金融相关）
 SOURCES = [
     "BrokerHK",
     "HK_Broker.conf",
@@ -41,10 +39,9 @@ SOURCES = [
     "Stocks.list",
     "StocksHK.list",
 ]
-# 明确排除：非金融内容
 EXCLUDED = ["Others.list", "Talkatone&T-mobile.list", "UKMobile.list"]
 
-# 过宽的裸 TLD 后缀，会误伤无关站点，合并时剔除
+# 过宽的裸 TLD 后缀，会误伤无关站点，剔除
 DROP_SUFFIXES = {"18.cn", "18.com.cn"}
 
 RAW = "https://raw.githubusercontent.com/{}/{}/{}"
@@ -126,31 +123,47 @@ def new_box():
 def fetch(name, retries=3):
     """从上游拉取单个规则文件原文。
 
-    优先用 gh api（api.github.com，带认证、沙箱内可达）；
-    gh 不可用时退回 raw.githubusercontent.com 直连（curl）。
+    依次尝试三条通道，任一成功即返回：
+      1. gh api      —— 本地有认证时最快
+      2. curl        —— CI 环境（raw 直连不被墙）
+      3. urllib      —— 最后兜底
     """
     last = "unknown error"
     for attempt in range(1, retries + 1):
-        gh = shutil.which("gh") or "/opt/homebrew/bin/gh"
-        if os.path.exists(gh):
+        # 通道 1：gh api（需已认证）
+        gh = shutil.which("gh")
+        if gh:
             r = subprocess.run(
                 [gh, "api", f"repos/{UPSTREAM}/contents/{name}?ref={REF}",
                  "--jq", ".content"],
                 capture_output=True, text=True, timeout=90,
             )
             if r.returncode == 0 and r.stdout.strip():
-                return base64.b64decode(r.stdout.strip()).decode("utf-8")
-            last = (r.stderr or r.stdout or "").strip().splitlines()
-            last = last[-1][:200] if last else "gh api failed"
-        else:
-            r = subprocess.run(
-                ["curl", "-fsSL", "--max-time", "60", RAW.format(UPSTREAM, REF, name)],
-                capture_output=True, text=True,
-            )
-            if r.returncode == 0 and r.stdout.strip():
-                return r.stdout
-            last = (r.stderr or r.stdout or "").strip().splitlines()
-            last = last[-1][:200] if last else "curl failed"
+                try:
+                    return base64.b64decode(r.stdout.strip()).decode("utf-8")
+                except Exception:
+                    pass
+            # gh 存在但未认证/失败 → 落到下一个通道
+
+        # 通道 2：curl 直连 raw
+        r = subprocess.run(
+            ["curl", "-fsSL", "--max-time", "60", RAW.format(UPSTREAM, REF, name)],
+            capture_output=True, text=True,
+        )
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout
+        last = (r.stderr or r.stdout or "").strip().splitlines()
+        last = last[-1][:200] if last else "curl failed"
+
+        # 通道 3：urllib
+        try:
+            import urllib.request
+            with urllib.request.urlopen(
+                    RAW.format(UPSTREAM, REF, name), timeout=60) as resp:
+                return resp.read().decode("utf-8")
+        except Exception as e:
+            last = f"urllib: {e}"
+
         print(f"  ! {name} 第 {attempt}/{retries} 次抓取失败：{last}")
     raise RuntimeError(last)
 
@@ -172,50 +185,22 @@ def parse(text):
             keyword.append(parts[1].lower())
         elif kind == "IP-CIDR" and len(parts) >= 2:
             ipcidr.append(parts[1])
-        # IP-CIDR6 / 其它类型直接忽略
     return exact, suffix, keyword, ipcidr
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dry-run", action="store_true", help="不推送，只报告差异")
+    ap.add_argument("--dry-run", action="store_true", help="不提交不推送")
+    ap.add_argument("--no-push", action="store_true",
+                    help="提交但不 push（GitHub Actions 用）")
     args = ap.parse_args()
 
     print(f"上游：{UPSTREAM}@{REF}")
     print(f"抓取 {len(SOURCES)} 个金融文件（排除 {len(EXCLUDED)} 个非金融文件）\n")
 
-    exact, suffix, keyword, ipcidr = OrderedDict(), OrderedDict(), OrderedDict(), OrderedDict()
-    per_file = {}
-    failures = []
-    for name in SOURCES:
-        try:
-            text = fetch(name)
-        except Exception as e:
-            # 抓取失败即中止：绝不能用空规则集覆盖本地内容
-            failures.append((name, str(e)))
-            continue
-        e, s, k, i = parse(text)
-        for x in e:
-            exact[x] = True
-        for x in s:
-            suffix[x] = True
-        for x in k:
-            keyword[x] = True
-        for x in i:
-            ipcidr[x] = True
-        per_file[name] = len(e) + len(s) + len(k) + len(i)
-        print(f"  {name:18s} exact={len(e):3d} suffix={len(s):3d} keyword={len(k)} ipcidr={len(i):3d}")
-
-    # ---- 抓取失败即中止，保留本地文件不动 ----
-    if failures:
-        print("\n抓取失败，已中止（未改动任何本地文件）：")
-        for name, err in failures:
-            print(f"  ✗ {name}: {err}")
-        return 1
-
-    # ---- 按机构归类 ----
     entities = OrderedDict()
     unclassified = []
+    failures = []
 
     for name in SOURCES:
         try:
@@ -242,10 +227,9 @@ def main():
             key = "__CN_IP__" if classify_ip(c) else "__HK_IP__"
             entities.setdefault(key, new_box())["ipcidr"][c] = True
             n += 1
-        per_file[name] = n
         print(f"  {name:18s} 归类 {n:3d} 条")
 
-    # ---- 抓取失败即中止，保留本地文件不动 ----
+    # 抓取失败即中止，保留本地文件不动
     if failures:
         print("\n抓取失败，已中止（未改动任何本地文件）：")
         for name, err in failures:
@@ -300,7 +284,7 @@ def main():
         g = groups[side]
         collapsed = sorted(str(n) for n in collapsed_by_side[side])
 
-        yaml_lines = [
+        lines = [
             f"# 金融规则集 - {label}",
             f"# 同步自 https://github.com/{UPSTREAM} @ {REF}",
             "#   " + " / ".join(SOURCES),
@@ -310,14 +294,14 @@ def main():
             "rules:",
             "  # ---- 精确域名（行情/交易/OpenAPI 端点） ----",
         ]
-        yaml_lines += [f"  - DOMAIN,{d}" for d in g["exact"]]
-        yaml_lines += ["", "  # ---- 域名后缀（券商客户端与官网） ----"]
-        yaml_lines += [f"  - DOMAIN-SUFFIX,{d}" for d in g["suffix"]]
+        lines += [f"  - DOMAIN,{d}" for d in g["exact"]]
+        lines += ["", "  # ---- 域名后缀（券商客户端与官网） ----"]
+        lines += [f"  - DOMAIN-SUFFIX,{d}" for d in g["suffix"]]
         if g["keyword"]:
-            yaml_lines += ["", "  # ---- 域名关键词（富途 moomoo 兜底） ----"]
-            yaml_lines += [f"  - DOMAIN-KEYWORD,{k}" for k in g["keyword"]]
-        yaml_lines += ["", "  # ---- IP 段 ----"]
-        yaml_lines += [f"  - IP-CIDR,{c},no-resolve" for c in collapsed]
+            lines += ["", "  # ---- 域名关键词（富途 moomoo 兜底） ----"]
+            lines += [f"  - DOMAIN-KEYWORD,{k}" for k in g["keyword"]]
+        lines += ["", "  # ---- IP 段 ----"]
+        lines += [f"  - IP-CIDR,{c},no-resolve" for c in collapsed]
 
         plain = (
             [f"DOMAIN,{d}" for d in g["exact"]]
@@ -326,49 +310,55 @@ def main():
             + [f"IP-CIDR,{c},no-resolve" for c in collapsed]
         )
         with open(f"{BASE}/{prefix}-rules.yaml", "w") as f:
-            f.write("\n".join(yaml_lines).rstrip() + "\n")
+            f.write("\n".join(lines).rstrip() + "\n")
         with open(f"{BASE}/{prefix}-rules.list", "w") as f:
             f.write("\n".join(plain) + "\n")
 
     # ---- 重建 mrs ----
     print("\n重建 mrs：")
-    r = subprocess.run(
-        [sys.executable, os.path.join(REPO, "build_mrs.py")],
-        capture_output=True, text=True,
-    )
+    r = subprocess.run([sys.executable, os.path.join(REPO, "build_mrs.py")],
+                       capture_output=True, text=True)
     for line in r.stdout.strip().splitlines():
         print("  " + line)
     if r.returncode != 0:
-        print(r.stderr[:500])
+        print(r.stderr[:800])
         return 1
 
     if args.dry_run:
         print("\n--dry-run：不提交不推送")
         return 0
 
-    # ---- 有变化才推送 ----
+    # ---- 有变化才提交 ----
     d = subprocess.run(["git", "status", "--porcelain"], cwd=REPO,
                        capture_output=True, text=True).stdout.strip()
     if not d:
-        print("\n上游无变化，无需推送。")
+        print("\n上游无变化，无需提交。")
         return 0
 
     print("\n检测到变化：")
     print(d)
     subprocess.run(["git", "add", "-A"], cwd=REPO)
+    cn, hk = groups["cn"], groups["hk"]
     subprocess.run(
         ["git", "commit", "-m",
-         f"sync: 同步上游 {UPSTREAM}@{REF}\n\n"
-         f"规则 {total} 条（exact {len(exact)} / suffix {len(suffix)} / "
-         f"keyword {len(keyword)} / ipcidr {len(collapsed)}）"],
+         f"sync: 同步上游 {UPSTREAM}@{REF}（按机构拆分）\n\n"
+         f"内地券商：exact {len(cn['exact'])} / suffix {len(cn['suffix'])} / "
+         f"keyword {len(cn['keyword'])}\n"
+         f"港外券商：exact {len(hk['exact'])} / suffix {len(hk['suffix'])} / "
+         f"keyword {len(hk['keyword'])}"],
         cwd=REPO,
     )
+
+    if args.no_push:
+        print("\n--no-push：已本地提交，未推送（由 CI 工作流负责推送）")
+        return 0
+
     p = subprocess.run(["git", "push"], cwd=REPO, capture_output=True, text=True)
     if p.returncode == 0:
         print("已推送到 origin/main ✓")
     else:
         print("推送失败：")
-        print((p.stdout + p.stderr)[:500])
+        print((p.stdout + p.stderr)[:600])
         return 1
     return 0
 
