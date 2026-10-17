@@ -15,37 +15,61 @@
 
 ```
 rule-provider/
-├── cn-finance-domains.mrs   1.2 KB   75 条域名规则
-├── cn-finance-ipcidr.mrs    141 B    16 条 IP 段
-├── cn-finance-rules.yaml    3.3 KB   内地组源规则（查阅/编辑）
-├── cn-finance-rules.list    2.5 KB   内地组源规则
-├── hk-finance-domains.mrs   2.1 KB  128 条域名规则
-├── hk-finance-ipcidr.mrs    361 B    53 条 IP 段
-├── hk-finance-rules.yaml    6.6 KB   香港组源规则
-└── hk-finance-rules.list    5.4 KB   香港组源规则
+├── cn-finance-rules.yaml    3.3 KB   内地组规则（推荐用这个）
+├── cn-finance-rules.list    2.5 KB   内地组规则（clash 传统格式）
+├── cn-finance-domains.mrs   672 B    内地组域名 mrs
+├── cn-finance-ipcidr.mrs    141 B    内地组 IP 段 mrs
+├── hk-finance-rules.yaml    6.6 KB   香港组规则（推荐用这个）
+├── hk-finance-rules.list    5.4 KB   香港组规则
+├── hk-finance-domains.mrs   1.1 KB   香港组域名 mrs
+└── hk-finance-ipcidr.mrs    361 B    香港组 IP 段 mrs
 ```
 
 ## 用法
 
+### 方式一：yaml + classical（推荐）
+
+一条规则集搞定，`DOMAIN-KEYWORD` 兜底规则也能用：
+
 ```yaml
 rule-providers:
-  cn-domain:  {type: file, behavior: domain, format: mrs, path: ./rule-provider/cn-finance-domains.mrs}
-  cn-ipcidr:  {type: file, behavior: ipcidr, format: mrs, path: ./rule-provider/cn-finance-ipcidr.mrs}
-  hk-domain:  {type: file, behavior: domain, format: mrs, path: ./rule-provider/hk-finance-domains.mrs}
-  hk-ipcidr:  {type: file, behavior: ipcidr, format: mrs, path: ./rule-provider/hk-finance-ipcidr.mrs}
+  🇨🇳 国内券商: {<<: *Classicals, url: "https://raw.githubusercontent.com/FookTong-Chan/clash-ruler/main/rule-provider/cn-finance-rules.yaml"}
+  🇭🇰 香港券商: {<<: *Classicals, url: "https://raw.githubusercontent.com/FookTong-Chan/clash-ruler/main/rule-provider/hk-finance-rules.yaml"}
 
 rules:
-  # 内地券商 → 直连
-  - RULE-SET,cn-domain,DIRECT
-  - RULE-SET,cn-ipcidr,DIRECT,no-resolve
-  # 香港/海外券商 → 代理
-  - RULE-SET,hk-domain,香港券商
-  - RULE-SET,hk-ipcidr,香港券商,no-resolve
-  - MATCH,DIRECT
+  - RULE-SET,🇨🇳 国内券商,国内券商      # DIRECT
+  - RULE-SET,🇭🇰 香港券商,香港券商      # 代理
 ```
 
-> 注意 `type: file` + `format: mrs`，不是 `type: mrs`。
+### 方式二：mrs（体积小，但装不下关键词规则）
+
+mrs 的 `behavior` 是单值编码，domain 和 ipcidr 必须分文件，所以是 4 个：
+
+```yaml
+domainMRS: &domainMRS {type: http, format: mrs, behavior: domain, interval: 28800}
+ipcidr:    &IPmrs     {type: http, format: mrs, behavior: ipcidr, interval: 28800}
+
+rule-providers:
+  cn-domain: {<<: *domainMRS, url: ".../cn-finance-domains.mrs"}
+  cn-ipcidr: {<<: *IPmrs,     url: ".../cn-finance-ipcidr.mrs"}
+  hk-domain: {<<: *domainMRS, url: ".../hk-finance-domains.mrs"}
+  hk-ipcidr: {<<: *IPmrs,     url: ".../hk-finance-ipcidr.mrs"}
+
+rules:
+  - RULE-SET,cn-domain,DIRECT
+  - RULE-SET,cn-ipcidr,DIRECT,no-resolve
+  - RULE-SET,hk-domain,香港券商
+  - RULE-SET,hk-ipcidr,香港券商,no-resolve
+```
+
+> **`format: yaml` 必须配 `behavior: classical`**。配成 `behavior: domain` 时，
+> `DOMAIN-SUFFIX,xxx` 这类带类型的行会被当作字面域名，结果是 ruleCount 正常
+> 但一条都匹配不上——这个组合是无效的，别用。
+
 > 策略组名不要和代理节点同名，否则内核报 `loop is detected in ProxyGroup`。
+
+> 规则要放在 GeoCN / ChinaDirect / MATCH 兜底**之前**：香港券商域名不在
+> ChinaMax 里，被 MATCH 接走会错走全球备用。
 
 ## 自动同步上游
 

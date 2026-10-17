@@ -76,20 +76,35 @@ MIHOMO = find_mihomo()
 
 
 def load(list_path):
+    """读入规则 list，分成域名规则和 IP 规则。
+
+    mrs 的 domain 行为对 payload 格式有严格要求：
+      精确域名  → 裸域名          eastmoney.com
+      域名后缀  → 带 + 前缀       +.eastmoney.com
+    直接写 `DOMAIN-SUFFIX,eastmoney.com` 会被当成字面域名，生成一个
+    永远匹配不上的废 trie（文件还会变大一倍）——这是之前踩过的坑。
+    DOMAIN-KEYWORD 无法进 domain trie，只能留给 yaml 版本。
+    """
     domains, ips = [], []
+    keywords = []
     for line in open(list_path):
         r = line.strip()
         if not r or r.startswith("#"):
             continue
-        if r.split(",")[0] == "IP-CIDR":
+        kind = r.split(",")[0]
+        if kind == "IP-CIDR":
             cidr = r.split(",", 1)[1].replace(",no-resolve", "")
             try:
                 ips.append(ipaddress.ip_network(cidr, strict=False))
             except ValueError:
                 pass
-        else:
-            domains.append(r)
-    return domains, ips
+        elif kind == "DOMAIN-SUFFIX":
+            domains.append("+." + r.split(",", 1)[1])
+        elif kind == "DOMAIN":
+            domains.append(r.split(",", 1)[1])
+        elif kind == "DOMAIN-KEYWORD":
+            keywords.append(r.split(",", 1)[1])
+    return domains, ips, keywords
 
 
 def main():
@@ -102,7 +117,7 @@ def main():
             ok_all = False
             continue
 
-        domains, ips = load(path)
+        domains, ips, keywords = load(path)
         collapsed = list(ipaddress.collapse_addresses(ips))
 
         dp = f"{BASE}/_{side}.domains.payload"
