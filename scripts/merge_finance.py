@@ -13,6 +13,7 @@
 排除：Others.list、Talkatone&T-mobile.list、UKMobile.list（非金融）
 """
 import re
+import os
 from collections import OrderedDict
 
 # ===== 规则原文（从仓库逐文件抓取） =====
@@ -228,7 +229,8 @@ def main():
              [f"IP-CIDR,{c},no-resolve" for c in sorted(ipcidr)]:
         plain.append(it)
 
-    base = "/Users/fooktong/Downloads/clash-ruler/rule-provider"
+    base = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "rule-provider")
+    os.makedirs(base, exist_ok=True)
     with open(f"{base}/finance-rules.yaml", "w") as f:
         f.write(out_yaml)
     with open(f"{base}/finance-rules.list", "w") as f:
