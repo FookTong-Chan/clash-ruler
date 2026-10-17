@@ -1,5 +1,10 @@
-# mihomo 内核二进制（55MB，由 build_mrs.py 自动下载）
+# mihomo 内核二进制（55MB，build_mrs.py 按平台自动下载）
 mihomo
 mihomo.gz
+
+# 中间产物：由 finance-rules.yaml 拆分而来，构建时重新生成
+rule-provider/finance-domains.yaml
+rule-provider/finance-ipcidr.yaml
+
 *.local
 .DS_Store
