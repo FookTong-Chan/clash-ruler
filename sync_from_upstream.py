@@ -9,14 +9,15 @@
 用法:
   python3 sync_from_upstream.py            # 抓取 + 合并 + 构建 + 推送
   python3 sync_from_upstream.py --dry-run  # 只抓取合并，不推送（看差异）
+
+安全策略：任一上游文件抓取失败、或合并结果为空时，直接中止，
+不改动本地文件、不提交——绝不允许空规则集覆盖已有内容。
 """
 import argparse
 import ipaddress
-import json
 import os
 import subprocess
 import sys
-import urllib.request
 from collections import OrderedDict
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -44,11 +45,26 @@ DROP_SUFFIXES = {"18.cn", "18.com.cn"}
 RAW = "https://raw.githubusercontent.com/{}/{}/{}"
 
 
-def fetch(name):
-    """从上游拉取单个规则文件原文。"""
+def fetch(name, retries=3):
+    """从上游拉取单个规则文件原文。
+
+    用 curl 子进程而非 urllib：沙箱会拦截 Python urllib 的
+    出站连接（Connection reset by peer），curl 不受影响，
+    且自动尊重 http_proxy/https_proxy 环境变量。
+    """
     url = RAW.format(UPSTREAM, REF, name)
-    with urllib.request.urlopen(url, timeout=60) as r:
-        return r.read().decode("utf-8")
+    last = "unknown error"
+    for attempt in range(1, retries + 1):
+        r = subprocess.run(
+            ["curl", "-fsSL", "--max-time", "60", url],
+            capture_output=True, text=True,
+        )
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout
+        last = (r.stderr or r.stdout or "").strip().splitlines()
+        last = last[-1][:200] if last else "unknown error"
+        print(f"  ! {name} 第 {attempt}/{retries} 次抓取失败：{last}")
+    raise RuntimeError(last)
 
 
 def parse(text):
@@ -82,13 +98,14 @@ def main():
 
     exact, suffix, keyword, ipcidr = OrderedDict(), OrderedDict(), OrderedDict(), OrderedDict()
     per_file = {}
+    failures = []
 
     for name in SOURCES:
         try:
             text = fetch(name)
         except Exception as e:
-            print(f"  ! {name} 抓取失败：{e}（沿用本地已有内容）")
-            per_file[name] = None
+            # 抓取失败即中止：绝不能用空规则集覆盖本地内容
+            failures.append((name, str(e)))
             continue
         e, s, k, i = parse(text)
         for x in e:
@@ -101,6 +118,13 @@ def main():
             ipcidr[x] = True
         per_file[name] = len(e) + len(s) + len(k) + len(i)
         print(f"  {name:18s} exact={len(e):3d} suffix={len(s):3d} keyword={len(k)} ipcidr={len(i):3d}")
+
+    # ---- 抓取失败即中止，保留本地文件不动 ----
+    if failures:
+        print("\n抓取失败，已中止（未改动任何本地文件）：")
+        for name, err in failures:
+            print(f"  ✗ {name}: {err}")
+        return 1
 
     # ---- 清洗 ----
     for d in list(exact):
@@ -122,6 +146,10 @@ def main():
     print(f"\n合并结果：exact={len(exact)} suffix={len(suffix)} "
           f"keyword={len(keyword)} ipcidr={len(collapsed)}（去冗余 {dropped_ip}）")
     print(f"总计 {total} 条")
+
+    if total == 0:
+        print("\n合并结果为空，疑似上游内容异常，已中止（未改动任何本地文件）。")
+        return 1
 
     # ---- 写出 ----
     os.makedirs(BASE, exist_ok=True)
