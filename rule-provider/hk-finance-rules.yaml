@@ -1,8 +1,7 @@
-# 金融规则集 / Financial Ruleset
+# 金融规则集 - 香港及海外券商
 # 同步自 https://github.com/koo17173/rule-set @ main
 #   BrokerHK / HK_Broker.conf / BrokerCN / BrokerHT / Stocks.list / StocksHK.list
-# 覆盖：富途·moomoo、长桥、老虎、雪球、盈透、Schwab、同花顺、东方财富、华泰
-# 统计：DOMAIN 26 / DOMAIN-SUFFIX 169 / DOMAIN-KEYWORD 8 / IP-CIDR 69
+# 统计：DOMAIN 23 / DOMAIN-SUFFIX 97 / DOMAIN-KEYWORD 8 / IP-CIDR 53
 
 rules:
   # ---- 精确域名（行情/交易/OpenAPI 端点） ----
@@ -29,9 +28,6 @@ rules:
   - DOMAIN,open.snowballsecurities.com
   - DOMAIN,openapi.snbsecurities.com
   - DOMAIN,sandbox.snbsecurities.com
-  - DOMAIN,m.10jqka.com.cn
-  - DOMAIN,t.10jqka.com.cn
-  - DOMAIN,msv6.wosms.cn
 
   # ---- 域名后缀（券商客户端与官网） ----
   - DOMAIN-SUFFIX,futu.link
@@ -74,6 +70,19 @@ rules:
   - DOMAIN-SUFFIX,moomootrustee.com
   - DOMAIN-SUFFIX,9oju31.launches.appsflyersdk.com
   - DOMAIN-SUFFIX,sgqt0j.launches.appsflyersdk.com
+  - DOMAIN-SUFFIX,futusg.com
+  - DOMAIN-SUFFIX,futunn.cn
+  - DOMAIN-SUFFIX,futusign.com
+  - DOMAIN-SUFFIX,futuone.com
+  - DOMAIN-SUFFIX,futuclean.com
+  - DOMAIN-SUFFIX,ftnndn.com
+  - DOMAIN-SUFFIX,futuweb.com
+  - DOMAIN-SUFFIX,futures.hk
+  - DOMAIN-SUFFIX,moomoo-us.com
+  - DOMAIN-SUFFIX,futusecurities.com
+  - DOMAIN-SUFFIX,futumkt.com
+  - DOMAIN-SUFFIX,futu.sg
+  - DOMAIN-SUFFIX,futu.au
   - DOMAIN-SUFFIX,lbctrl.com
   - DOMAIN-SUFFIX,lbkrs.com
   - DOMAIN-SUFFIX,api.lbkrs.com
@@ -89,6 +98,13 @@ rules:
   - DOMAIN-SUFFIX,longbridgehk.com
   - DOMAIN-SUFFIX,longportapp.cn
   - DOMAIN-SUFFIX,longportapp.com
+  - DOMAIN-SUFFIX,lbkg.net
+  - DOMAIN-SUFFIX,lb-static.com
+  - DOMAIN-SUFFIX,longportapp.hk
+  - DOMAIN-SUFFIX,longbridge-inc.com
+  - DOMAIN-SUFFIX,snowball-x.com
+  - DOMAIN-SUFFIX,snowballsecurities.com
+  - DOMAIN-SUFFIX,snbsecurities.com
   - DOMAIN-SUFFIX,itiger.com
   - DOMAIN-SUFFIX,itigerup.com
   - DOMAIN-SUFFIX,tigerbrokers.com
@@ -104,105 +120,13 @@ rules:
   - DOMAIN-SUFFIX,xiaohu8.com
   - DOMAIN-SUFFIX,zhijianfengyi.cn
   - DOMAIN-SUFFIX,zhijianfengyi.com
-  - DOMAIN-SUFFIX,snowball-x.com
-  - DOMAIN-SUFFIX,snowballsecurities.com
-  - DOMAIN-SUFFIX,snbsecurities.com
   - DOMAIN-SUFFIX,interactivebrokers.com
   - DOMAIN-SUFFIX,interactivebrokers.com.hk
   - DOMAIN-SUFFIX,schwab.com
   - DOMAIN-SUFFIX,schwab.com.cn
   - DOMAIN-SUFFIX,schwab.com.hk
   - DOMAIN-SUFFIX,schwab.co.uk
-  - DOMAIN-SUFFIX,0033.com
-  - DOMAIN-SUFFIX,hexin.cn
-  - DOMAIN-SUFFIX,10jqka.com.cn
-  - DOMAIN-SUFFIX,iwencai.com
-  - DOMAIN-SUFFIX,thsi.cn
-  - DOMAIN-SUFFIX,tdx.com.cn
-  - DOMAIN-SUFFIX,gw.com.cn
-  - DOMAIN-SUFFIX,hexun.com
-  - DOMAIN-SUFFIX,myhexun.com
-  - DOMAIN-SUFFIX,soumoney.com.cn
-  - DOMAIN-SUFFIX,thsbx.com
-  - DOMAIN-SUFFIX,ticang.com
-  - DOMAIN-SUFFIX,51ifind.com
-  - DOMAIN-SUFFIX,5ifund.com
-  - DOMAIN-SUFFIX,yingfund.net
-  - DOMAIN-SUFFIX,myhexin.com
-  - DOMAIN-SUFFIX,123ths.com
-  - DOMAIN-SUFFIX,ths123.com
-  - DOMAIN-SUFFIX,huntgold.cn
-  - DOMAIN-SUFFIX,thsbaoxian.net
-  - DOMAIN-SUFFIX,touzime.net
-  - DOMAIN-SUFFIX,hithink.com
-  - DOMAIN-SUFFIX,myhithink.com
-  - DOMAIN-SUFFIX,zhifutech.com
-  - DOMAIN-SUFFIX,aicubes.cn
-  - DOMAIN-SUFFIX,thsyun.com
-  - DOMAIN-SUFFIX,voiceclub.cn
-  - DOMAIN-SUFFIX,gtimg.cn
-  - DOMAIN-SUFFIX,sinajs.cn
-  - DOMAIN-SUFFIX,hxkba.com
-  - DOMAIN-SUFFIX,yongginbao.com.cn
-  - DOMAIN-SUFFIX,ip-api.com
-  - DOMAIN-SUFFIX,zhangle.com
-  - DOMAIN-SUFFIX,htsc.com
-  - DOMAIN-SUFFIX,htsc.com.cn
-  - DOMAIN-SUFFIX,htzq.com.cn
-  - DOMAIN-SUFFIX,zhangleglobal.com
-  - DOMAIN-SUFFIX,ihtfin.com
-  - DOMAIN-SUFFIX,cmpassport.com
-  - DOMAIN-SUFFIX,finet.com.cn
-  - DOMAIN-SUFFIX,roadshowing.com
-  - DOMAIN-SUFFIX,1234567.com.cn
-  - DOMAIN-SUFFIX,95021.com
-  - DOMAIN-SUFFIX,caifutong.com.cn
-  - DOMAIN-SUFFIX,caimi.cn
-  - DOMAIN-SUFFIX,caimi.com.cn
-  - DOMAIN-SUFFIX,dfcfs.cn
-  - DOMAIN-SUFFIX,dfcfs.com
-  - DOMAIN-SUFFIX,dfcfw.com
-  - DOMAIN-SUFFIX,dingqibao.cn
-  - DOMAIN-SUFFIX,dingqibao.com
-  - DOMAIN-SUFFIX,dingqibao.com.cn
-  - DOMAIN-SUFFIX,dongfanglicaishi.com
-  - DOMAIN-SUFFIX,eastmoney.com
-  - DOMAIN-SUFFIX,eastmoneyfutures.com
-  - DOMAIN-SUFFIX,emsec.hk
-  - DOMAIN-SUFFIX,guba.com.cn
-  - DOMAIN-SUFFIX,haitunzhibo.com
-  - DOMAIN-SUFFIX,huoqibao.cn
-  - DOMAIN-SUFFIX,huoqibao.com
-  - DOMAIN-SUFFIX,huoqibao.com.cn
-  - DOMAIN-SUFFIX,langke.tv
-  - DOMAIN-SUFFIX,samacn.org.cn
-  - DOMAIN-SUFFIX,tiantianfunds.cn
-  - DOMAIN-SUFFIX,txjhqh.com
-  - DOMAIN-SUFFIX,uufund.cn
-  - DOMAIN-SUFFIX,uufund.com
-  - DOMAIN-SUFFIX,xzsec.com
-  - DOMAIN-SUFFIX,zhaiba.com
-  - DOMAIN-SUFFIX,zhongcaisuo.cn
-  - DOMAIN-SUFFIX,zhongcaisuo.com
-  - DOMAIN-SUFFIX,zhongcaisuo.com.cn
   - DOMAIN-SUFFIX,htsc.com.hk
-  - DOMAIN-SUFFIX,lbkg.net
-  - DOMAIN-SUFFIX,lb-static.com
-  - DOMAIN-SUFFIX,longportapp.hk
-  - DOMAIN-SUFFIX,longbridge-inc.com
-  - DOMAIN-SUFFIX,futusg.com
-  - DOMAIN-SUFFIX,futunn.cn
-  - DOMAIN-SUFFIX,futusign.com
-  - DOMAIN-SUFFIX,futuone.com
-  - DOMAIN-SUFFIX,futuclean.com
-  - DOMAIN-SUFFIX,ftnndn.com
-  - DOMAIN-SUFFIX,futuweb.com
-  - DOMAIN-SUFFIX,futures.hk
-  - DOMAIN-SUFFIX,moomoo-us.com
-  - DOMAIN-SUFFIX,futusecurities.com
-  - DOMAIN-SUFFIX,futumkt.com
-  - DOMAIN-SUFFIX,futu.sg
-  - DOMAIN-SUFFIX,futu.au
 
   # ---- 域名关键词（富途 moomoo 兜底） ----
   - DOMAIN-KEYWORD,futunn
@@ -214,89 +138,31 @@ rules:
   - DOMAIN-KEYWORD,futuesop
   - DOMAIN-KEYWORD,moomoo
 
-  # ---- IP 段（券商行情/交易服务器） ----
+  # ---- IP 段 ----
   - IP-CIDR,1.14.242.0/23,no-resolve
   - IP-CIDR,1.15.158.0/24,no-resolve
   - IP-CIDR,101.32.0.0/16,no-resolve
-  - IP-CIDR,101.32.198.0/24,no-resolve
-  - IP-CIDR,101.32.198.91/24,no-resolve
   - IP-CIDR,106.55.66.0/23,no-resolve
   - IP-CIDR,111.230.119.0/24,no-resolve
   - IP-CIDR,111.230.214.0/24,no-resolve
-  - IP-CIDR,113.44.0.0/16,no-resolve
-  - IP-CIDR,113.44.79.142/24,no-resolve
   - IP-CIDR,119.147.110.0/24,no-resolve
   - IP-CIDR,119.28.0.0/16,no-resolve
-  - IP-CIDR,119.28.141.0/24,no-resolve
-  - IP-CIDR,119.28.183.0/24,no-resolve
-  - IP-CIDR,119.28.201.30/32,no-resolve
-  - IP-CIDR,119.28.218.0/23,no-resolve
-  - IP-CIDR,119.28.37.0/24,no-resolve
-  - IP-CIDR,119.28.37.77/24,no-resolve
   - IP-CIDR,119.29.48.0/23,no-resolve
   - IP-CIDR,119.91.0.0/16,no-resolve
-  - IP-CIDR,119.91.244.0/23,no-resolve
-  - IP-CIDR,119.91.245.125/24,no-resolve
-  - IP-CIDR,120.195.0.0/16,no-resolve
-  - IP-CIDR,120.195.71.165/24,no-resolve
-  - IP-CIDR,120.79.0.0/16,no-resolve
-  - IP-CIDR,120.79.254.241/24,no-resolve
   - IP-CIDR,121.5.97.0/24,no-resolve
-  - IP-CIDR,122.9.0.0/16,no-resolve
-  - IP-CIDR,122.9.119.201/24,no-resolve
-  - IP-CIDR,122.9.90.189/24,no-resolve
-  - IP-CIDR,122.96.0.0/16,no-resolve
-  - IP-CIDR,122.96.107.230/24,no-resolve
-  - IP-CIDR,122.96.150.194/24,no-resolve
   - IP-CIDR,124.156.0.0/16,no-resolve
-  - IP-CIDR,124.156.124.0/24,no-resolve
-  - IP-CIDR,124.156.233.0/24,no-resolve
-  - IP-CIDR,124.156.233.21/24,no-resolve
-  - IP-CIDR,124.156.234.0/24,no-resolve
-  - IP-CIDR,124.70.0.0/16,no-resolve
-  - IP-CIDR,124.70.143.155/24,no-resolve
-  - IP-CIDR,124.70.163.208/24,no-resolve
   - IP-CIDR,129.226.0.0/16,no-resolve
-  - IP-CIDR,129.226.111.0/24,no-resolve
-  - IP-CIDR,129.226.79.0/24,no-resolve
   - IP-CIDR,14.152.91.0/24,no-resolve
-  - IP-CIDR,153.3.0.0/16,no-resolve
-  - IP-CIDR,153.3.219.115/24,no-resolve
-  - IP-CIDR,157.0.0.0/16,no-resolve
-  - IP-CIDR,157.0.28.40/24,no-resolve
-  - IP-CIDR,157.0.31.198/24,no-resolve
   - IP-CIDR,161.117.0.0/16,no-resolve
   - IP-CIDR,162.14.10.0/24,no-resolve
   - IP-CIDR,170.106.0.0/16,no-resolve
-  - IP-CIDR,170.106.201.0/24,no-resolve
-  - IP-CIDR,170.106.48.0/23,no-resolve
-  - IP-CIDR,170.106.49.68/24,no-resolve
-  - IP-CIDR,170.106.62.0/24,no-resolve
   - IP-CIDR,175.178.207.0/24,no-resolve
   - IP-CIDR,18.162.38.24/32,no-resolve
   - IP-CIDR,18.163.254.94/32,no-resolve
   - IP-CIDR,18.166.204.203/32,no-resolve
-  - IP-CIDR,180.101.0.0/16,no-resolve
-  - IP-CIDR,180.101.224.8/24,no-resolve
-  - IP-CIDR,180.101.228.6/24,no-resolve
-  - IP-CIDR,180.101.48.162/24,no-resolve
   - IP-CIDR,183.60.225.0/24,no-resolve
   - IP-CIDR,193.112.234.0/24,no-resolve
   - IP-CIDR,193.112.84.0/24,no-resolve
-  - IP-CIDR,218.2.0.0/16,no-resolve
-  - IP-CIDR,218.2.129.134/24,no-resolve
-  - IP-CIDR,218.206.0.0/16,no-resolve
-  - IP-CIDR,218.206.101.200/24,no-resolve
-  - IP-CIDR,221.226.0.0/16,no-resolve
-  - IP-CIDR,221.226.112.153/24,no-resolve
-  - IP-CIDR,221.236.0.0/16,no-resolve
-  - IP-CIDR,221.236.15.38/24,no-resolve
-  - IP-CIDR,222.190.0.0/16,no-resolve
-  - IP-CIDR,222.190.108.157/24,no-resolve
-  - IP-CIDR,223.112.0.0/16,no-resolve
-  - IP-CIDR,223.112.1.226/24,no-resolve
-  - IP-CIDR,223.112.19.214/24,no-resolve
-  - IP-CIDR,223.112.24.201/24,no-resolve
   - IP-CIDR,34.226.76.162/32,no-resolve
   - IP-CIDR,38.65.217.0/24,no-resolve
   - IP-CIDR,42.193.128.0/24,no-resolve
@@ -315,22 +181,13 @@ rules:
   - IP-CIDR,43.145.30.0/24,no-resolve
   - IP-CIDR,43.152.182.46/32,no-resolve
   - IP-CIDR,43.153.0.0/16,no-resolve
-  - IP-CIDR,43.153.191.0/24,no-resolve
-  - IP-CIDR,43.153.191.154/24,no-resolve
-  - IP-CIDR,43.153.233.0/24,no-resolve
-  - IP-CIDR,43.153.233.212/24,no-resolve
-  - IP-CIDR,43.153.234.107/32,no-resolve
-  - IP-CIDR,43.153.249.33/32,no-resolve
   - IP-CIDR,43.160.156.0/24,no-resolve
   - IP-CIDR,43.163.17.229/32,no-resolve
-  - IP-CIDR,47.106.0.0/16,no-resolve
-  - IP-CIDR,47.106.98.6/24,no-resolve
   - IP-CIDR,47.243.107.98/32,no-resolve
   - IP-CIDR,47.243.118.180/32,no-resolve
   - IP-CIDR,47.57.180.81/32,no-resolve
   - IP-CIDR,47.85.0.0/16,no-resolve
   - IP-CIDR,49.234.0.0/16,no-resolve
-  - IP-CIDR,49.234.241.0/24,no-resolve
   - IP-CIDR,49.51.77.113/32,no-resolve
   - IP-CIDR,49.51.78.0/23,no-resolve
   - IP-CIDR,54.172.233.156/32,no-resolve

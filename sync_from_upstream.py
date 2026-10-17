@@ -14,10 +14,15 @@
 不改动本地文件、不提交——绝不允许空规则集覆盖已有内容。
 """
 import argparse
+import base64
 import ipaddress
+import json
 import os
+import shutil
 import subprocess
 import sys
+import tarfile
+import tempfile
 from collections import OrderedDict
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -45,24 +50,107 @@ DROP_SUFFIXES = {"18.cn", "18.com.cn"}
 RAW = "https://raw.githubusercontent.com/{}/{}/{}"
 
 
+# ============================================================
+# 机构归属识别：决定一条规则进「内地组」还是「香港组」
+# ============================================================
+ENTITY_PATTERNS = [
+    # ---- 香港 / 海外券商 ----
+    ("富途·moomoo", ["futunn", "futubull", "futuhk", "futufin", "futuholdings",
+                  "futuniuniu", "futuesop", "futuinc", "futuin", "futuhn",
+                  "futustatic", "fututrade", "fututrustee", "futuone", "futuclean",
+                  "futusign", "futusg", "futuweb", "futusecurities", "futumkt",
+                  "futuapi", "futuau", "futuchain", "futu.sg", "futu.au",
+                  "futu.link", "futu0", "futu1", "futu2", "futu3",
+                  "futu4", "futu5", "futu6", "futu7", "futu8", "futu9",
+                  "ftnndn", "qtlcdn", "futures.hk", "moomoo",
+                  "play-analytics", "appsflyersdk",
+                  "futu.com", "futu.cn", "futuhongkong", "futuhkapp"]),
+    ("长桥", ["longbridge", "longport", "lbkrs", "lbctrl", "wbrks", "lbkg",
+             "lb-static"]),
+    ("老虎", ["itiger", "tigerbrokers", "tigerfintech", "tigerbbs", "skytigris",
+             "tradeup", "iotaskyt", "laohu8", "xiaohu8", "zhijianfengyi"]),
+    ("雪球", ["snowball-x", "snowballsecurities", "snbsecurities"]),
+    ("盈透", ["interactivebrokers"]),
+    ("Schwab", ["schwab"]),
+    ("华泰HK", ["htsc.com.hk"]),
+    # ---- 中国内地券商 ----
+    ("同花顺", ["10jqka", "iwencai", "hexin", "hexun", "ths", "hithink",
+              "zhifutech", "aicubes", "voiceclub", "gtimg", "sinajs", "hxkba",
+              "yongginbao", "wosms", "0033.com", "soumoney", "ticang",
+              "51ifind", "5ifund", "yingfund", "huntgold", "touzime",
+              "tdx.com.cn", "gw.com.cn", "ip-api"]),
+    ("东方财富", ["eastmoney", "dfcfw", "dfcfs", "caifutong", "caimi",
+               "dingqibao", "dongfanglicaishi", "emsec", "guba", "haitunzhibo",
+               "huoqibao", "langke", "samacn", "tiantianfunds", "txjhqh",
+               "uufund", "xzsec", "zhaiba", "zhongcaisuo", "1234567", "95021"]),
+    ("华泰", ["htsc", "zhangle", "htzq", "zhangleglobal", "ihtfin",
+             "cmpassport", "finet", "roadshowing"]),
+]
+
+HK_ENTITIES = {"富途·moomoo", "长桥", "老虎", "雪球", "盈透", "Schwab", "华泰HK"}
+
+# 中国大陆运营商 / 云厂商网段（华泰、同花顺的国内服务器）。
+# 不在其中的 IP 段一律归入香港/海外组。
+CN_IP_RANGES = [
+    "180.101.0.0/16", "222.190.0.0/16", "221.226.0.0/16", "218.2.0.0/16",
+    "122.96.0.0/16", "153.3.0.0/16", "157.0.0.0/16",
+    "120.195.0.0/16", "218.206.0.0/16", "223.112.0.0/16",
+    "47.106.0.0/16", "120.79.0.0/16",
+    "124.70.0.0/16", "113.44.0.0/16",
+    "122.9.0.0/16", "221.236.0.0/16",
+]
+CN_NETS = [ipaddress.ip_network(c) for c in CN_IP_RANGES]
+
+
+def classify_domain(domain):
+    """返回域名所属机构名，无法识别返回 None。"""
+    d = domain.lower()
+    for entity, pats in ENTITY_PATTERNS:
+        for p in pats:
+            if p in d:
+                return entity
+    return None
+
+
+def classify_ip(cidr):
+    """IP 段是否位于中国大陆。"""
+    net = ipaddress.ip_network(cidr, strict=False)
+    return any(net.subnet_of(cn) for cn in CN_NETS)
+
+
+def new_box():
+    return {"exact": OrderedDict(), "suffix": OrderedDict(),
+            "keyword": OrderedDict(), "ipcidr": OrderedDict()}
+
+
 def fetch(name, retries=3):
     """从上游拉取单个规则文件原文。
 
-    用 curl 子进程而非 urllib：沙箱会拦截 Python urllib 的
-    出站连接（Connection reset by peer），curl 不受影响，
-    且自动尊重 http_proxy/https_proxy 环境变量。
+    优先用 gh api（api.github.com，带认证、沙箱内可达）；
+    gh 不可用时退回 raw.githubusercontent.com 直连（curl）。
     """
-    url = RAW.format(UPSTREAM, REF, name)
     last = "unknown error"
     for attempt in range(1, retries + 1):
-        r = subprocess.run(
-            ["curl", "-fsSL", "--max-time", "60", url],
-            capture_output=True, text=True,
-        )
-        if r.returncode == 0 and r.stdout.strip():
-            return r.stdout
-        last = (r.stderr or r.stdout or "").strip().splitlines()
-        last = last[-1][:200] if last else "unknown error"
+        gh = shutil.which("gh") or "/opt/homebrew/bin/gh"
+        if os.path.exists(gh):
+            r = subprocess.run(
+                [gh, "api", f"repos/{UPSTREAM}/contents/{name}?ref={REF}",
+                 "--jq", ".content"],
+                capture_output=True, text=True, timeout=90,
+            )
+            if r.returncode == 0 and r.stdout.strip():
+                return base64.b64decode(r.stdout.strip()).decode("utf-8")
+            last = (r.stderr or r.stdout or "").strip().splitlines()
+            last = last[-1][:200] if last else "gh api failed"
+        else:
+            r = subprocess.run(
+                ["curl", "-fsSL", "--max-time", "60", RAW.format(UPSTREAM, REF, name)],
+                capture_output=True, text=True,
+            )
+            if r.returncode == 0 and r.stdout.strip():
+                return r.stdout
+            last = (r.stderr or r.stdout or "").strip().splitlines()
+            last = last[-1][:200] if last else "curl failed"
         print(f"  ! {name} 第 {attempt}/{retries} 次抓取失败：{last}")
     raise RuntimeError(last)
 
@@ -99,7 +187,6 @@ def main():
     exact, suffix, keyword, ipcidr = OrderedDict(), OrderedDict(), OrderedDict(), OrderedDict()
     per_file = {}
     failures = []
-
     for name in SOURCES:
         try:
             text = fetch(name)
@@ -126,66 +213,122 @@ def main():
             print(f"  ✗ {name}: {err}")
         return 1
 
-    # ---- 清洗 ----
-    for d in list(exact):
-        suffix.pop(d, None)          # 精确项不从后缀集合重复出现
-    for d in DROP_SUFFIXES:
-        suffix.pop(d, None)          # 去掉过宽后缀
+    # ---- 按机构归类 ----
+    entities = OrderedDict()
+    unclassified = []
 
-    # ---- IP 段规整 ----
-    nets = []
-    for c in ipcidr:
+    for name in SOURCES:
         try:
-            nets.append(ipaddress.ip_network(c, strict=False))
-        except ValueError:
-            pass
-    collapsed = list(ipaddress.collapse_addresses(nets))
-    dropped_ip = len(nets) - len(collapsed)
+            text = fetch(name)
+        except Exception as e:
+            failures.append((name, str(e)))
+            continue
+        e, s, k, i = parse(text)
+        n = 0
+        for d in e + s + k:
+            ent = classify_domain(d)
+            if ent is None:
+                unclassified.append(d)
+                continue
+            box = entities.setdefault(ent, new_box())
+            if d in e:
+                box["exact"][d] = True
+            elif d in s:
+                box["suffix"][d] = True
+            else:
+                box["keyword"][d] = True
+            n += 1
+        for c in i:
+            key = "__CN_IP__" if classify_ip(c) else "__HK_IP__"
+            entities.setdefault(key, new_box())["ipcidr"][c] = True
+            n += 1
+        per_file[name] = n
+        print(f"  {name:18s} 归类 {n:3d} 条")
 
-    total = len(exact) + len(suffix) + len(keyword) + len(collapsed)
-    print(f"\n合并结果：exact={len(exact)} suffix={len(suffix)} "
-          f"keyword={len(keyword)} ipcidr={len(collapsed)}（去冗余 {dropped_ip}）")
-    print(f"总计 {total} 条")
-
-    if total == 0:
-        print("\n合并结果为空，疑似上游内容异常，已中止（未改动任何本地文件）。")
+    # ---- 抓取失败即中止，保留本地文件不动 ----
+    if failures:
+        print("\n抓取失败，已中止（未改动任何本地文件）：")
+        for name, err in failures:
+            print(f"  ✗ {name}: {err}")
         return 1
 
-    # ---- 写出 ----
+    if unclassified:
+        print(f"\n  ! {len(unclassified)} 条域名未能识别机构，已剔除：")
+        for d in sorted(set(unclassified)):
+            print(f"      {d}")
+
+    # ---- 清洗 ----
+    for box in entities.values():
+        for d in list(box["exact"]):
+            box["suffix"].pop(d, None)
+        for d in DROP_SUFFIXES:
+            box["suffix"].pop(d, None)
+
+    # ---- 按地区汇总成两组 ----
+    groups = {"cn": new_box(), "hk": new_box()}
+    print("\n机构归属：")
+    for ent, box in entities.items():
+        if ent == "__CN_IP__":
+            side = "cn"
+        elif ent == "__HK_IP__":
+            side = "hk"
+        else:
+            side = "hk" if ent in HK_ENTITIES else "cn"
+        if not ent.startswith("__"):
+            label = "香港/海外" if side == "hk" else "中国内地"
+            print(f"  [{label}] {ent:12s} {sum(len(v) for v in box.values()):3d} 条")
+        for kind in box:
+            groups[side][kind].update(box[kind])
+
+    collapsed_by_side = {}
+    for side, label in (("cn", "中国内地"), ("hk", "香港/海外")):
+        g = groups[side]
+        nets = [ipaddress.ip_network(c, strict=False) for c in g["ipcidr"]]
+        collapsed = list(ipaddress.collapse_addresses(nets))
+        collapsed_by_side[side] = collapsed
+        print(f"\n{label}合计：exact={len(g['exact'])} suffix={len(g['suffix'])} "
+              f"keyword={len(g['keyword'])} ipcidr={len(collapsed)}"
+              f"（输入 {len(nets)}，去冗余 {len(nets)-len(collapsed)}）")
+        if not (g["exact"] or g["suffix"]):
+            print(f"\n{label}组为空，疑似上游内容异常，已中止。")
+            return 1
+
+    # ---- 写出（两组各自一份 yaml + list）----
     os.makedirs(BASE, exist_ok=True)
-    yaml_lines = [
-        "# 金融规则集 / Financial Ruleset",
-        f"# 同步自 https://github.com/{UPSTREAM} @ {REF}",
-        "#   " + " / ".join(SOURCES),
-        "# 覆盖：富途·moomoo、长桥、老虎、雪球、盈透、Schwab、同花顺、东方财富、华泰",
-        f"# 统计：DOMAIN {len(exact)} / DOMAIN-SUFFIX {len(suffix)} / "
-        f"DOMAIN-KEYWORD {len(keyword)} / IP-CIDR {len(collapsed)}",
-        "",
-        "rules:",
-        "  # ---- 精确域名（行情/交易/OpenAPI 端点） ----",
-    ]
-    yaml_lines += [f"  - DOMAIN,{d}" for d in exact]
-    yaml_lines += ["", "  # ---- 域名后缀（券商客户端与官网） ----"]
-    yaml_lines += [f"  - DOMAIN-SUFFIX,{d}" for d in suffix]
-    if keyword:
-        yaml_lines += ["", "  # ---- 域名关键词（富途 moomoo 兜底） ----"]
-        yaml_lines += [f"  - DOMAIN-KEYWORD,{k}" for k in keyword]
-    yaml_lines += ["", "  # ---- IP 段（券商行情/交易服务器） ----"]
-    yaml_lines += [f"  - IP-CIDR,{c},no-resolve" for c in sorted(ipcidr)]
+    for side, prefix, label in (("cn", "cn-finance", "中国内地券商"),
+                                ("hk", "hk-finance", "香港及海外券商")):
+        g = groups[side]
+        collapsed = sorted(str(n) for n in collapsed_by_side[side])
 
-    plain = (
-        [f"DOMAIN,{d}" for d in exact]
-        + [f"DOMAIN-SUFFIX,{d}" for d in suffix]
-        + [f"DOMAIN-KEYWORD,{k}" for k in keyword]
-        + [f"IP-CIDR,{c},no-resolve" for c in sorted(ipcidr)]
-    )
+        yaml_lines = [
+            f"# 金融规则集 - {label}",
+            f"# 同步自 https://github.com/{UPSTREAM} @ {REF}",
+            "#   " + " / ".join(SOURCES),
+            f"# 统计：DOMAIN {len(g['exact'])} / DOMAIN-SUFFIX {len(g['suffix'])} / "
+            f"DOMAIN-KEYWORD {len(g['keyword'])} / IP-CIDR {len(collapsed)}",
+            "",
+            "rules:",
+            "  # ---- 精确域名（行情/交易/OpenAPI 端点） ----",
+        ]
+        yaml_lines += [f"  - DOMAIN,{d}" for d in g["exact"]]
+        yaml_lines += ["", "  # ---- 域名后缀（券商客户端与官网） ----"]
+        yaml_lines += [f"  - DOMAIN-SUFFIX,{d}" for d in g["suffix"]]
+        if g["keyword"]:
+            yaml_lines += ["", "  # ---- 域名关键词（富途 moomoo 兜底） ----"]
+            yaml_lines += [f"  - DOMAIN-KEYWORD,{k}" for k in g["keyword"]]
+        yaml_lines += ["", "  # ---- IP 段 ----"]
+        yaml_lines += [f"  - IP-CIDR,{c},no-resolve" for c in collapsed]
 
-    yaml_path = os.path.join(BASE, "finance-rules.yaml")
-    list_path = os.path.join(BASE, "finance-rules.list")
-    with open(yaml_path, "w") as f:
-        f.write("\n".join(yaml_lines).rstrip() + "\n")
-    with open(list_path, "w") as f:
-        f.write("\n".join(plain) + "\n")
+        plain = (
+            [f"DOMAIN,{d}" for d in g["exact"]]
+            + [f"DOMAIN-SUFFIX,{d}" for d in g["suffix"]]
+            + [f"DOMAIN-KEYWORD,{k}" for k in g["keyword"]]
+            + [f"IP-CIDR,{c},no-resolve" for c in collapsed]
+        )
+        with open(f"{BASE}/{prefix}-rules.yaml", "w") as f:
+            f.write("\n".join(yaml_lines).rstrip() + "\n")
+        with open(f"{BASE}/{prefix}-rules.list", "w") as f:
+            f.write("\n".join(plain) + "\n")
 
     # ---- 重建 mrs ----
     print("\n重建 mrs：")

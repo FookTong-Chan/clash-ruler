@@ -1,0 +1,102 @@
+# 金融规则集 - 中国内地券商
+# 同步自 https://github.com/koo17173/rule-set @ main
+#   BrokerHK / HK_Broker.conf / BrokerCN / BrokerHT / Stocks.list / StocksHK.list
+# 统计：DOMAIN 3 / DOMAIN-SUFFIX 72 / DOMAIN-KEYWORD 0 / IP-CIDR 16
+
+rules:
+  # ---- 精确域名（行情/交易/OpenAPI 端点） ----
+  - DOMAIN,m.10jqka.com.cn
+  - DOMAIN,t.10jqka.com.cn
+  - DOMAIN,msv6.wosms.cn
+
+  # ---- 域名后缀（券商客户端与官网） ----
+  - DOMAIN-SUFFIX,0033.com
+  - DOMAIN-SUFFIX,hexin.cn
+  - DOMAIN-SUFFIX,10jqka.com.cn
+  - DOMAIN-SUFFIX,iwencai.com
+  - DOMAIN-SUFFIX,thsi.cn
+  - DOMAIN-SUFFIX,tdx.com.cn
+  - DOMAIN-SUFFIX,gw.com.cn
+  - DOMAIN-SUFFIX,hexun.com
+  - DOMAIN-SUFFIX,myhexun.com
+  - DOMAIN-SUFFIX,soumoney.com.cn
+  - DOMAIN-SUFFIX,thsbx.com
+  - DOMAIN-SUFFIX,ticang.com
+  - DOMAIN-SUFFIX,51ifind.com
+  - DOMAIN-SUFFIX,5ifund.com
+  - DOMAIN-SUFFIX,yingfund.net
+  - DOMAIN-SUFFIX,myhexin.com
+  - DOMAIN-SUFFIX,123ths.com
+  - DOMAIN-SUFFIX,ths123.com
+  - DOMAIN-SUFFIX,huntgold.cn
+  - DOMAIN-SUFFIX,thsbaoxian.net
+  - DOMAIN-SUFFIX,touzime.net
+  - DOMAIN-SUFFIX,hithink.com
+  - DOMAIN-SUFFIX,myhithink.com
+  - DOMAIN-SUFFIX,zhifutech.com
+  - DOMAIN-SUFFIX,aicubes.cn
+  - DOMAIN-SUFFIX,thsyun.com
+  - DOMAIN-SUFFIX,voiceclub.cn
+  - DOMAIN-SUFFIX,gtimg.cn
+  - DOMAIN-SUFFIX,sinajs.cn
+  - DOMAIN-SUFFIX,hxkba.com
+  - DOMAIN-SUFFIX,yongginbao.com.cn
+  - DOMAIN-SUFFIX,ip-api.com
+  - DOMAIN-SUFFIX,zhangle.com
+  - DOMAIN-SUFFIX,htsc.com
+  - DOMAIN-SUFFIX,htsc.com.cn
+  - DOMAIN-SUFFIX,htzq.com.cn
+  - DOMAIN-SUFFIX,zhangleglobal.com
+  - DOMAIN-SUFFIX,ihtfin.com
+  - DOMAIN-SUFFIX,cmpassport.com
+  - DOMAIN-SUFFIX,finet.com.cn
+  - DOMAIN-SUFFIX,roadshowing.com
+  - DOMAIN-SUFFIX,1234567.com.cn
+  - DOMAIN-SUFFIX,95021.com
+  - DOMAIN-SUFFIX,caifutong.com.cn
+  - DOMAIN-SUFFIX,caimi.cn
+  - DOMAIN-SUFFIX,caimi.com.cn
+  - DOMAIN-SUFFIX,dfcfs.cn
+  - DOMAIN-SUFFIX,dfcfs.com
+  - DOMAIN-SUFFIX,dfcfw.com
+  - DOMAIN-SUFFIX,dingqibao.cn
+  - DOMAIN-SUFFIX,dingqibao.com
+  - DOMAIN-SUFFIX,dingqibao.com.cn
+  - DOMAIN-SUFFIX,dongfanglicaishi.com
+  - DOMAIN-SUFFIX,eastmoney.com
+  - DOMAIN-SUFFIX,eastmoneyfutures.com
+  - DOMAIN-SUFFIX,emsec.hk
+  - DOMAIN-SUFFIX,guba.com.cn
+  - DOMAIN-SUFFIX,haitunzhibo.com
+  - DOMAIN-SUFFIX,huoqibao.cn
+  - DOMAIN-SUFFIX,huoqibao.com
+  - DOMAIN-SUFFIX,huoqibao.com.cn
+  - DOMAIN-SUFFIX,langke.tv
+  - DOMAIN-SUFFIX,samacn.org.cn
+  - DOMAIN-SUFFIX,tiantianfunds.cn
+  - DOMAIN-SUFFIX,txjhqh.com
+  - DOMAIN-SUFFIX,uufund.cn
+  - DOMAIN-SUFFIX,uufund.com
+  - DOMAIN-SUFFIX,xzsec.com
+  - DOMAIN-SUFFIX,zhaiba.com
+  - DOMAIN-SUFFIX,zhongcaisuo.cn
+  - DOMAIN-SUFFIX,zhongcaisuo.com
+  - DOMAIN-SUFFIX,zhongcaisuo.com.cn
+
+  # ---- IP 段 ----
+  - IP-CIDR,113.44.0.0/16,no-resolve
+  - IP-CIDR,120.195.0.0/16,no-resolve
+  - IP-CIDR,120.79.0.0/16,no-resolve
+  - IP-CIDR,122.9.0.0/16,no-resolve
+  - IP-CIDR,122.96.0.0/16,no-resolve
+  - IP-CIDR,124.70.0.0/16,no-resolve
+  - IP-CIDR,153.3.0.0/16,no-resolve
+  - IP-CIDR,157.0.0.0/16,no-resolve
+  - IP-CIDR,180.101.0.0/16,no-resolve
+  - IP-CIDR,218.2.0.0/16,no-resolve
+  - IP-CIDR,218.206.0.0/16,no-resolve
+  - IP-CIDR,221.226.0.0/16,no-resolve
+  - IP-CIDR,221.236.0.0/16,no-resolve
+  - IP-CIDR,222.190.0.0/16,no-resolve
+  - IP-CIDR,223.112.0.0/16,no-resolve
+  - IP-CIDR,47.106.0.0/16,no-resolve

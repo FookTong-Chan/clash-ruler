@@ -1,92 +1,81 @@
 # 金融规则集（Finance Rule Set）
 
-从 [koo17173/rule-set](https://github.com/koo17173/rule-set) 提取全部金融相关规则，去重合并后转换为 mihomo 原生 `.mrs` 二进制格式。
+从 [koo17173/rule-set](https://github.com/koo17173/rule-set) 实时同步金融规则，**按机构归属拆分为内地 / 香港两组**，转换为 mihomo 原生 `.mrs` 二进制格式。
 
-## 覆盖范围
+## 拆分逻辑
 
-| 类别 | 机构 | 域名规则 |
+| 组 | 机构 | 建议策略 |
 |---|---|---|
-| **港美股券商** | 富途牛牛 / moomoo | 45 条 |
-| | 长桥 Longbridge | 16 条 |
-| | 老虎证券 Tiger | 13 条 |
-| | 雪球 Snowball X | 8 条 |
-| | 盈透 Interactive Brokers | 2 条 |
-| | 嘉信理财 Schwab | 4 条 |
-| **A股券商/资讯** | 同花顺（含问财、iFinD、51基金） | 31 条 |
-| | 东方财富（含股吧、财富通） | 34 条 |
-| | 华泰证券（含涨乐财富通） | 10 条 |
+| **cn-finance** | 同花顺、东方财富、华泰（内地） | `DIRECT` 直连 |
+| **hk-finance** | 富途·moomoo、长桥、老虎、雪球、盈透、Schwab、华泰HK | 代理节点 |
 
-另含富途/moomoo 的 8 条 `DOMAIN-KEYWORD` 兜底规则，以及 69 个券商行情/交易服务器 IP 段。
+这样内地券商App（同花顺、涨乐财富通、东方财富）走直链保速度，港美股券商走代理保连通。
 
 ## 文件
 
 ```
 rule-provider/
-├── finance-domains.mrs    3.1 KB   202 条域名规则（binary, magic 28b52ffd）
-├── finance-ipcidr.mrs      454 B     69 条 IP 段规则（binary）
-├── finance-rules.yaml      10 KB     合并后的完整 YAML（人工查阅/编辑用）
-├── finance-rules.list      8.6 KB    合并后的完整 list（导入 Sub-Store 等用）
-├── finance-domains.yaml    6.4 KB    拆分后的域名部分
-└── finance-ipcidr.yaml     3.5 KB    拆分后的 IP 部分
+├── cn-finance-domains.mrs   1.2 KB   75 条域名规则
+├── cn-finance-ipcidr.mrs    141 B    16 条 IP 段
+├── cn-finance-rules.yaml    3.3 KB   内地组源规则（查阅/编辑）
+├── cn-finance-rules.list    2.5 KB   内地组源规则
+├── hk-finance-domains.mrs   2.1 KB  128 条域名规则
+├── hk-finance-ipcidr.mrs    361 B    53 条 IP 段
+├── hk-finance-rules.yaml    6.6 KB   香港组源规则
+└── hk-finance-rules.list    5.4 KB   香港组源规则
 ```
-
-## 为什么是两个 mrs 而不是一个
-
-mrs 的文件头里**行为类型（domain / ipcidr）是单值编码的**，一个文件不可能同时装两种规则。
-所以金融规则集拆成：
-
-- `finance-domains.mrs` → behavior: domain
-- `finance-ipcidr.mrs` → behavior: ipcidr
-
-两者在配置里分别引用即可。
 
 ## 用法
 
-把两个 `.mrs` 放进 OpenClash / mihomo 的 `rule-provider` 目录，在配置里引用：
-
 ```yaml
 rule-providers:
-  finance-domain:
-    type: file
-    behavior: domain
-    format: mrs
-    path: ./rule-provider/finance-domains.mrs
-  finance-ipcidr:
-    type: file
-    behavior: ipcidr
-    format: mrs
-    path: ./rule-provider/finance-ipcidr.mrs
+  cn-domain:  {type: file, behavior: domain, format: mrs, path: ./rule-provider/cn-finance-domains.mrs}
+  cn-ipcidr:  {type: file, behavior: ipcidr, format: mrs, path: ./rule-provider/cn-finance-ipcidr.mrs}
+  hk-domain:  {type: file, behavior: domain, format: mrs, path: ./rule-provider/hk-finance-domains.mrs}
+  hk-ipcidr:  {type: file, behavior: ipcidr, format: mrs, path: ./rule-provider/hk-finance-ipcidr.mrs}
 
 rules:
-  # 精确指定：放在其他规则之前，优先级更高
-  - RULE-SET,finance-domain,香港节点
-  - RULE-SET,finance-ipcidr,香港节点,no-resolve
+  # 内地券商 → 直连
+  - RULE-SET,cn-domain,DIRECT
+  - RULE-SET,cn-ipcidr,DIRECT,no-resolve
+  # 香港/海外券商 → 代理
+  - RULE-SET,hk-domain,香港券商
+  - RULE-SET,hk-ipcidr,香港券商,no-resolve
+  - MATCH,DIRECT
 ```
 
-> 注意 `type: file` 而不是 `type: mrs`——mrs 是 `format` 的取值，`type` 指数据来源（file/http/inline）。
+> 注意 `type: file` + `format: mrs`，不是 `type: mrs`。
+> 策略组名不要和代理节点同名，否则内核报 `loop is detected in ProxyGroup`。
 
-## 重新生成
+## 自动同步上游
 
 ```bash
-python3 build_mrs.py            # 输出到 rule-provider/
-python3 build_mrs.py /some/dir  # 指定输出目录
+python3 sync_from_upstream.py            # 抓取 + 归类 + 构建 + 推送
+python3 sync_from_upstream.py --dry-run  # 只抓取归类，不推送
 ```
 
-脚本会做三件事：读 `finance-rules.list` → `ipaddress.collapse_addresses()` 合并冗余网段 → 调用 mihomo 转成 mrs。
+每次运行从 `koo17173/rule-set@main` 拉取 6 个金融文件，按机构归类后重建全部 mrs，**仅在内容有变化时**才 commit + push。抓取失败或某组为空时直接中止，不会用空规则集覆盖已有内容。
 
-**不需要预装 mihomo** —— 脚本按当前平台自动下载对应架构的内核到项目根目录（已 gitignore）。查找顺序：`MIHOMO_PATH` 环境变量 → `./mihomo` → PATH → 自动下载。
+**不需要预装 mihomo** —— 脚本按平台自动下载内核到项目根目录（已 gitignore）。
 
-上游规则更新后，重新跑 `scripts/merge_finance.py` 覆盖 `finance-rules.list`，再跑一次 `build_mrs.py` 即可。
+## 归类规则
 
-## 数据来源与取舍
+分类靠域名特征识别（`sync_from_upstream.py` 的 `ENTITY_PATTERNS`），不依赖上游文件的注释结构。两条特殊处理：
 
-**源文件**：`BrokerHK`、`HK_Broker.conf`、`BrokerCN`、`BrokerHT`、`Stocks.list`、`StocksHK.list`
+- **`htsc.com.hk` 归香港组**，其余华泰域名（`htsc.com`、`htsc.com.cn`、`htzq.com.cn` 等）归内地组——前者是华泰金控（香港），后者是内地涨乐财富通。
+- **IP 段按网段归属**：江苏电信/联通/移动、广东阿里云、上海华为云、同花顺的 `122.9.0.0/16`、`221.236.0.0/16` 算内地；其余一律算香港/海外。
 
-**已排除**：`Others.list`（nodeseek 等资讯站）、`Talkatone&T-mobile.list`、`UKMobile.list`（号码段服务）
+上游每次新增域名若无法识别归属，脚本会打印告警并剔除，不会静默丢弃——看到告警就往 `ENTITY_PATTERNS` 里补一条模式。
+
+## 数据来源
+
+**纳入**：`BrokerHK`、`HK_Broker.conf`、`BrokerCN`、`BrokerHT`、`Stocks.list`、`StocksHK.list`
+
+**排除**：`Others.list`（nodeseek 等资讯站）、`Talkatone&T-mobile.list`、`UKMobile.list`（号码段服务）
 
 **合并时的处理**：
 
-1. 六个文件内容大量重叠（如富途域名在 4 个文件里重复），取并集去重。
+1. 六个文件内容大量重叠（富途域名在 4 个文件里重复），取并集去重。
 2. 精确 `DOMAIN` 规则排在 `DOMAIN-SUFFIX` 之前，避免被宽泛后缀抢先匹配。
-3. 剔除了两个过宽的裸 TLD 后缀 `18.cn`、`18.com.cn`——它们是东方财富的短域名，但作为后缀会误伤所有 `*.18.cn` 的无关站点。
-4. IP 段用 `collapse_addresses()` 归并：89 条输入去冗余 20 条（如 `101.32.198.0/24` 被 `101.32.0.0/16` 覆盖），这是无损的。
+3. 剔除两个过宽的裸 TLD 后缀 `18.cn`、`18.com.cn`——它们是东方财富的短域名，但作为后缀会误伤所有 `*.18.cn` 的无关站点。
+4. IP 段用 `collapse_addresses()` 归并去冗余。
