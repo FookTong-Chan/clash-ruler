@@ -67,6 +67,42 @@ python3 sync_from_upstream.py --dry-run  # 只抓取归类，不推送
 
 上游每次新增域名若无法识别归属，脚本会打印告警并剔除，不会静默丢弃——看到告警就往 `ENTITY_PATTERNS` 里补一条模式。
 
+## 自动更新（两层）
+
+规则集的变化要经过两层才能到你的路由器：
+
+```
+上游 koo17173/rule-set ──①──> 你的 GitHub 仓库 ──②──> 路由器 OpenClash
+      （规则变化源）        本仓库的 .mrs 文件        rule-provider 拉取
+```
+
+**① GitHub 自己更新** —— 由 `.github/workflows/sync-rules.yml` 完成，跑在 GitHub 服务器上，**不依赖你本机开机或网络**：
+
+- 频率：**每 12 小时**一次（UTC 00:00 / 12:00，即北京时间 08:00 / 20:00）
+- 想改成 24 小时：把工作流里的 `- cron: "0 */12 * * *"` 改成 `- cron: "0 0 * * *"`
+- 也可在 GitHub 网页 **Actions → 同步金融规则集 → Run workflow** 手动触发
+- 上游无变化时**不会**制造空提交
+
+**② 路由器拉取** —— 在 OpenClash 的 rule-provider 里配 `interval`，mihomo 会按时重新下载：
+
+```yaml
+cn-domain:
+  type: http
+  behavior: domain
+  format: mrs
+  url: https://raw.githubusercontent.com/FookTong-Chan/clash-ruler/main/rule-provider/cn-finance-domains.mrs
+  interval: 43200        # 12 小时（秒）；86400 即 24 小时
+```
+
+> raw.githubusercontent.com 只是静态文件托管，它自己不会变——必须靠 ① 推送新版本，② 才能拉到。
+
+本地手动同步（一般不需要， Actions 会自动做）：
+
+```bash
+python3 sync_from_upstream.py            # 抓取 + 归类 + 构建 + 提交 + 推送
+python3 sync_from_upstream.py --dry-run  # 只抓取归类，不提交
+```
+
 ## 数据来源
 
 **纳入**：`BrokerHK`、`HK_Broker.conf`、`BrokerCN`、`BrokerHT`、`Stocks.list`、`StocksHK.list`
