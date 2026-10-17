@@ -1,0 +1,65 @@
+name: 同步金融规则集
+
+on:
+  schedule:
+    # 每 12 小时同步一次（UTC 00:00 和 12:00，即北京时间 08:00 和 20:00）
+    # 想改成 24 小时一次，把上面这行换成: - cron: "0 0 * * *"
+    - cron: "0 */12 * * *"
+  workflow_dispatch:   # 允许在 GitHub 网页手动触发
+    inputs:
+      reason:
+        description: "手动触发原因（可选）"
+        required: false
+        default: ""
+
+permissions:
+  contents: write      # 允许工作流推送提交
+
+concurrency:
+  group: sync-rules
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 同步上游 → 归类拆分 → 重建 mrs → 提交推送
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 sync_from_upstream.py --no-push
+
+          # --no-push 模式下脚本只做本地提交，推送交给工作流
+          if git diff --quiet HEAD origin/main; then
+            echo "上游无变化，无需推送。"
+          else
+            echo "检测到变化，推送中..."
+            git push origin HEAD:main
+          fi
+
+      - name: 汇总本次结果
+        if: always()
+        run: |
+          echo "### 规则集同步结果" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| 规则集 | 域名 | IP 段 |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
+          for side in cn hk; do
+            d=$(grep -c '^DOMAIN' rule-provider/${side}-finance-rules.list || echo 0)
+            i=$(grep -c '^IP-CIDR' rule-provider/${side}-finance-rules.list || echo 0)
+            name=$([ "$side" = "cn" ] && echo "内地券商" || echo "香港/海外券商")
+            echo "| ${name} | ${d} | ${i} |" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "最新提交：\`$(git log -1 --format='%h %s')\`" >> $GITHUB_STEP_SUMMARY
