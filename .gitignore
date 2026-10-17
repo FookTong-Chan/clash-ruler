@@ -8,3 +8,6 @@ rule-provider/finance-ipcidr.yaml
 
 *.local
 .DS_Store
+
+__pycache__/
+*.pyc
