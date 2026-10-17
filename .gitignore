@@ -1,0 +1,5 @@
+# mihomo 内核二进制（55MB，由 build_mrs.py 自动下载）
+mihomo
+mihomo.gz
+*.local
+.DS_Store
