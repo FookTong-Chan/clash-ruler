@@ -67,7 +67,7 @@ ENTITY_PATTERNS = [
     ("老虎", ["itiger", "tigerbrokers", "tigerfintech", "tigerbbs", "skytigris",
              "tradeup", "iotaskyt", "laohu8", "xiaohu8", "zhijianfengyi"]),
     ("雪球", ["snowball-x", "snowballsecurities", "snbsecurities"]),
-    ("盈透", ["interactivebrokers"]),
+    ("盈透", ["interactivebrokers", "ibkr"]),
     ("Schwab", ["schwab"]),
     # 内地券商的香港子公司：统一走代理（与华泰HK 同规则）
     ("华泰HK", ["htsc.com.hk"]),
@@ -88,6 +88,17 @@ ENTITY_PATTERNS = [
 
 HK_ENTITIES = {"富途·moomoo", "长桥", "老虎", "雪球", "盈透", "Schwab",
                "华泰HK", "东方财富HK"}
+
+# ============================================================
+# 本地补充域名：上游规则集漏掉、但实测必须走对应分流的域名。
+# 每次同步都会自动合并，不会被上游覆盖。
+# ============================================================
+EXTRA_RULES = {
+    # 盈透证券现用主域是 ibkr.com（官网/登录/API 全在它下面），
+    # 上游只有老的 interactivebrokers.com。
+    # 缺它时 ibkr.com 会掉进 MATCH 兜底、随机走全球节点（实测命中 🌍全球备用）。
+    "hk": {"suffix": ["ibkr.com", "ibkr.com.hk"]},
+}
 
 # 中国大陆运营商 / 云厂商网段（华泰、同花顺的国内服务器）。
 # 不在其中的 IP 段一律归入香港/海外组。
@@ -266,6 +277,13 @@ def main():
             print(f"  [{label}] {ent:12s} {sum(len(v) for v in box.values()):3d} 条")
         for kind in box:
             groups[side][kind].update(box[kind])
+
+    # ---- 合并本地补充域名（上游缺失、实测必需）----
+    for side, extra in EXTRA_RULES.items():
+        for kind, items in extra.items():
+            for d in items:
+                groups[side][kind][d.lower()] = True
+                print(f"\n  + 本地补充 [{side}] {kind}:{d.lower()}")
 
     collapsed_by_side = {}
     for side, label in (("cn", "中国内地"), ("hk", "香港/海外")):
