@@ -1,4 +1,4 @@
-name: 同步金融规则集
+name: 同步规则集（金融 + Meta Muse）
 
 on:
   schedule:
@@ -34,13 +34,18 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: 同步上游 → 归类拆分 → 重建 mrs → 提交推送
+      - name: 同步金融规则 → 归类拆分 → 重建 mrs → 本地提交
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          python3 sync_from_upstream.py --no-push
+        run: python3 sync_from_upstream.py --no-push
 
-          # --no-push 模式下脚本只做本地提交，推送交给工作流
+      - name: 同步 Meta Muse 规则 → 重建 mrs → 本地提交
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 sync_muse.py --no-push
+
+      - name: 推送
+        run: |
           if git diff --quiet HEAD origin/main; then
             echo "上游无变化，无需推送。"
           else
@@ -61,5 +66,7 @@ jobs:
             name=$([ "$side" = "cn" ] && echo "内地券商" || echo "香港/海外券商")
             echo "| ${name} | ${d} | ${i} |" >> $GITHUB_STEP_SUMMARY
           done
+          d=$(grep -c '^DOMAIN' rule-provider/meta-muse-rules.list || echo 0)
+          echo "| Meta Muse AI | ${d} | 0 |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "最新提交：\`$(git log -1 --format='%h %s')\`" >> $GITHUB_STEP_SUMMARY

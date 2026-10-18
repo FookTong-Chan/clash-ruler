@@ -1,8 +1,14 @@
-# 金融规则集（Finance Rule Set）
+# 分流规则集（Clash Rule）
 
-从 [koo17173/rule-set](https://github.com/koo17173/rule-set) 实时同步金融规则，**按机构归属拆分为内地 / 香港两组**，转换为 mihomo 原生 `.mrs` 二进制格式。
+两套 mihomo 原生 `.mrs` / `.yaml` 规则集，每 12 小时自动同步上游：
 
-## 拆分逻辑
+| 规则集 | 来源 | 建议策略 |
+|---|---|---|
+| **cn-finance** | [koo17173/rule-set](https://github.com/koo17173/rule-set) 按机构拆分 | `DIRECT` 直连 |
+| **hk-finance** | 同上 | 代理节点 |
+| **meta-muse** | [juner922/muse-loon-rules](https://github.com/juner922/muse-loon-rules) | 美国节点 |
+
+## 金融规则拆分逻辑
 
 | 组 | 机构 | 建议策略 |
 |---|---|---|
@@ -11,19 +17,35 @@
 
 这样内地券商App（同花顺、涨乐财富通、东方财富）走直链保速度，港美股券商走代理保连通。
 
+## Meta Muse 规则
+
+`MuseAI.list` 是 Loon 格式（`DOMAIN-SUFFIX,xxx` 不带策略名），与 mihomo 的 classical 列表一致，转换时只做小写化与去重。内容分两部分：
+
+- **Muse 专用**：`muse.ai` / `museai.com` / `metaaivm.com` / `metaaiusercontent.com` / `ecto1usercontent.com`，以及 6 个精确域名（OHTTP 中继、隐私网关等 Cloudflare/Fastly 端点）
+- **Meta 账号与社交基础设施**：`meta.com` / `facebook.com` / `instagram.com` / `whatsapp.com` / `fbcdn.net` / `fbsbx.com` 等
+
+本地另补了 `messenger.com`、`threads.net`（Muse 可在 WhatsApp / Messenger 内运行，threads 同属 Meta 社交域）。
+
+> **Muse 有地区限制**：域名全走代理也可能提示"尚未在你的国家或地区开放"——那是出口 IP 判定，机房 IP、广播 IP 会被拦，需要美区原生/家宽节点。规则集只能保证域名走对，保证不了地区。
+
 ## 文件
 
 ```
 rule-provider/
-├── cn-finance-rules.yaml    3.3 KB   内地组规则（推荐用这个）
+├── cn-finance-rules.yaml    3.3 KB   内地券商（推荐用这个）
 ├── cn-finance-rules.list    2.5 KB   内地组规则（clash 传统格式）
 ├── cn-finance-domains.mrs   672 B    内地组域名 mrs
 ├── cn-finance-ipcidr.mrs    141 B    内地组 IP 段 mrs
-├── hk-finance-rules.yaml    6.6 KB   香港组规则（推荐用这个）
+├── hk-finance-rules.yaml    6.6 KB   港外券商（推荐用这个）
 ├── hk-finance-rules.list    5.4 KB   香港组规则
 ├── hk-finance-domains.mrs   1.1 KB   香港组域名 mrs
-└── hk-finance-ipcidr.mrs    361 B    香港组 IP 段 mrs
+├── hk-finance-ipcidr.mrs    361 B    香港组 IP 段 mrs
+├── meta-muse-rules.yaml     1.5 KB   Meta Muse AI（推荐用这个）
+├── meta-muse-rules.list     763 B    Meta Muse AI 规则
+└── meta-muse-domains.mrs    353 B    Meta Muse AI 域名 mrs
 ```
+
+> `meta-muse` 只有域名、不含 IP 段，所以没有对应的 `-ipcidr.mrs`——构建脚本会跳过空类型，不会产出 0 条目的空壳文件。
 
 ## 用法
 
@@ -35,10 +57,12 @@ rule-provider/
 rule-providers:
   🇨🇳 国内券商: {<<: *Classicals, url: "https://raw.githubusercontent.com/FookTong-Chan/clash-ruler/main/rule-provider/cn-finance-rules.yaml"}
   🇭🇰 香港券商: {<<: *Classicals, url: "https://raw.githubusercontent.com/FookTong-Chan/clash-ruler/main/rule-provider/hk-finance-rules.yaml"}
+  🤖 Meta Muse: {<<: *Classicals, url: "https://raw.githubusercontent.com/FookTong-Chan/clash-ruler/main/rule-provider/meta-muse-rules.yaml"}
 
 rules:
   - RULE-SET,🇨🇳 国内券商,国内券商      # DIRECT
   - RULE-SET,🇭🇰 香港券商,香港券商      # 代理
+  - RULE-SET,🤖 Meta Muse,美国节点      # 需在 AD / GeoCN / MATCH 之前
 ```
 
 ### 方式二：mrs（体积小，但装不下关键词规则）
@@ -54,12 +78,14 @@ rule-providers:
   cn-ipcidr: {<<: *IPmrs,     url: ".../cn-finance-ipcidr.mrs"}
   hk-domain: {<<: *domainMRS, url: ".../hk-finance-domains.mrs"}
   hk-ipcidr: {<<: *IPmrs,     url: ".../hk-finance-ipcidr.mrs"}
+  muse:      {<<: *domainMRS, url: ".../meta-muse-domains.mrs"}
 
 rules:
   - RULE-SET,cn-domain,DIRECT
   - RULE-SET,cn-ipcidr,DIRECT,no-resolve
   - RULE-SET,hk-domain,香港券商
   - RULE-SET,hk-ipcidr,香港券商,no-resolve
+  - RULE-SET,muse,美国节点
 ```
 
 > **`format: yaml` 必须配 `behavior: classical`**。配成 `behavior: domain` 时，
@@ -74,11 +100,12 @@ rules:
 ## 自动同步上游
 
 ```bash
-python3 sync_from_upstream.py            # 抓取 + 归类 + 构建 + 推送
-python3 sync_from_upstream.py --dry-run  # 只抓取归类，不推送
+python3 sync_from_upstream.py            # 金融：抓取 + 归类 + 构建 + 推送
+python3 sync_muse.py                     # Meta Muse：抓取 + 构建 + 推送
+# 两者都支持 --dry-run / --no-push
 ```
 
-每次运行从 `koo17173/rule-set@main` 拉取 6 个金融文件，按机构归类后重建全部 mrs，**仅在内容有变化时**才 commit + push。抓取失败或某组为空时直接中止，不会用空规则集覆盖已有内容。
+`sync_from_upstream.py` 每次从 `koo17173/rule-set@main` 拉取 6 个金融文件，按机构归类后重建全部 mrs；`sync_muse.py` 从 `juner922/muse-loon-rules@main` 拉取 `MuseAI.list`。两者都**仅在内容有变化时**才 commit + push，抓取失败或解析为空时直接中止，不会用空规则集覆盖已有内容。
 
 **不需要预装 mihomo** —— 脚本按平台自动下载内核到项目根目录（已 gitignore）。
 

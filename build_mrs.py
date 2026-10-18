@@ -27,6 +27,7 @@ MIHOMO_VER = "v1.19.32"
 SETS = [
     ("cn", "cn-finance-rules.list", "cn-finance"),
     ("hk", "hk-finance-rules.list", "hk-finance"),
+    ("meta", "meta-muse-rules.list", "meta-muse"),
 ]
 
 
@@ -127,10 +128,19 @@ def main():
         with open(ipp, "w") as f:
             f.write("\n".join(str(n) for n in collapsed) + "\n")
 
-        for behavior, payload, out in [
-            ("domain", dp, f"{BASE}/{prefix}-domains.mrs"),
-            ("ipcidr", ipp, f"{BASE}/{prefix}-ipcidr.mrs"),
+        for behavior, payload, empty, fname in [
+            ("domain", dp, not domains, "domains"),
+            ("ipcidr", ipp, not collapsed, "ipcidr"),
         ]:
+            out = f"{BASE}/{prefix}-{fname}.mrs"
+            # 该类型没有任何规则时不产出 mrs（并清理残留），
+            # 避免出现一个 0 条目的空壳文件被路由器拉下去。
+            if empty:
+                if os.path.exists(out):
+                    os.remove(out)
+                print(f"  {side}/{behavior:8s} SKIP  无条目，跳过  "
+                      f"{os.path.basename(out)}")
+                continue
             if os.path.exists(out):
                 os.remove(out)
             subprocess.run(
@@ -143,7 +153,8 @@ def main():
                   f"{os.path.getsize(out) if ok else 0:>6} bytes  {os.path.basename(out)}")
 
         for p in (dp, ipp):
-            os.remove(p)
+            if os.path.exists(p):
+                os.remove(p)
         print(f"       域名 {len(domains)} 条，IP 段 {len(ips)} → 合并后 {len(collapsed)} 条\n")
 
     if not ok_all:
