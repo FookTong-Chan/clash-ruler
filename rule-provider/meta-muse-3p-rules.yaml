@@ -1,0 +1,48 @@
+# Meta Muse 第三方域规则集（可选）
+# 逆向取证源：https://github.com/mahdi-salmanzade/meta-muse-teardown @ main
+#   人工整理源：https://github.com/juner922/muse-loon-rules @ main
+# Muse 代码路径能触达的非 Meta 域：Play 服务 / Stripe 支付 / 连接器
+# OAuth / jsDelivr 渲染 / VM 网关白名单等
+# 可选集：APNs、NTP、地图瓦片、CRL 等已剔除（代理过去只会变慢）
+# 按需指向美国节点，不需要就别挂这份规则集
+# 统计：DOMAIN-SUFFIX 36 / DOMAIN 1
+
+rules:
+  # ---- 第三方域（连接器 / 支付 / CDN / 渲染） ----
+  - DOMAIN-SUFFIX,arcgis.com
+  - DOMAIN-SUFFIX,calendly.com
+  - DOMAIN-SUFFIX,exe.xyz
+  - DOMAIN-SUFFIX,firebaseio.com
+  - DOMAIN-SUFFIX,giphy.com
+  - DOMAIN-SUFFIX,google.com
+  - DOMAIN-SUFFIX,googleapis.com
+  - DOMAIN-SUFFIX,googlesyndication.com
+  - DOMAIN-SUFFIX,gstatic.com
+  - DOMAIN-SUFFIX,hatch.one
+  - DOMAIN-SUFFIX,healthex.io
+  - DOMAIN-SUFFIX,jsdelivr.net
+  - DOMAIN-SUFFIX,link.com
+  - DOMAIN-SUFFIX,mapbox.com
+  - DOMAIN-SUFFIX,maplibre.org
+  - DOMAIN-SUFFIX,maptiler.com
+  - DOMAIN-SUFFIX,multimango.com
+  - DOMAIN-SUFFIX,notion.com
+  - DOMAIN-SUFFIX,onepeloton.com
+  - DOMAIN-SUFFIX,openstreetmap.org
+  - DOMAIN-SUFFIX,pariscope.dev
+  - DOMAIN-SUFFIX,segment.io
+  - DOMAIN-SUFFIX,sentry.io
+  - DOMAIN-SUFFIX,sigstage.dev
+  - DOMAIN-SUFFIX,sigstore.dev
+  - DOMAIN-SUFFIX,spotify.com
+  - DOMAIN-SUFFIX,stripe.com
+  - DOMAIN-SUFFIX,t.me
+  - DOMAIN-SUFFIX,telegram.org
+  - DOMAIN-SUFFIX,unpkg.com
+  - DOMAIN-SUFFIX,usda.gov
+  - DOMAIN-SUFFIX,virtualearth.net
+  - DOMAIN-SUFFIX,weather.gov
+  - DOMAIN-SUFFIX,willow606.com
+  - DOMAIN-SUFFIX,youtube.com
+  - DOMAIN-SUFFIX,ytimg.com
+  - DOMAIN,cdnjs.cloudflare.com

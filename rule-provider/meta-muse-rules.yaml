@@ -1,40 +1,41 @@
-# Meta Muse AI 规则集
-# 同步自 https://github.com/juner922/muse-loon-rules @ main
-#   MuseAI.list
-# 覆盖：muse.ai / metaaivm.com（Muse 专用）+ Meta 账号与社交基础设施
-#   （facebook / instagram / whatsapp / fbcdn / meta.com 等）
-# 建议指向美国节点；Muse 有地区限制，出口 IP 需美区原生/家宽
-# 统计：DOMAIN-SUFFIX 20 / DOMAIN 6
+# Meta Muse AI 规则集（Meta 自有域）
+# 逆向取证源：https://github.com/mahdi-salmanzade/meta-muse-teardown @ main
+#   人工整理源：https://github.com/juner922/muse-loon-rules @ main
+# 静态逆向取证提取：三平台二进制字符串 + 清单文件里出现的 host
+# 覆盖 Muse 专用域（muse.ai / meta.ai / metaaivm.com）+ Meta 账号与
+# 社交基础设施（facebook / instagram / whatsapp / fbcdn 等）+ 隐私中继
+# 建议指向美国节点；Muse 的地区限制判出口 IP，规则集解决不了
+# 统计：DOMAIN-SUFFIX 22 / DOMAIN 6
 
 rules:
-  # ---- 核心: Muse 应用域名 ----
+  # ---- Muse 专用（逆向取证·核心） ----
   - DOMAIN-SUFFIX,muse.ai
   - DOMAIN-SUFFIX,museai.com
   - DOMAIN-SUFFIX,meta.ai
-  - DOMAIN-SUFFIX,meta.com
-  - DOMAIN-SUFFIX,atmeta.com
-  # ---- 云端虚拟机 (Secure VM) 基础设施 ----
   - DOMAIN-SUFFIX,metaaivm.com
   - DOMAIN-SUFFIX,metaaiusercontent.com
   - DOMAIN-SUFFIX,ecto1usercontent.com
-  - DOMAIN,hatch.ecto1.ai
-  - DOMAIN,node.hatch.one
-  - DOMAIN,meta.privacy-gateway.cloudflare.com
-  - DOMAIN,meta.hpke-keys.privacy-gateway.cloudflare.com
-  - DOMAIN,meta-ohttp-relay-prod.fastly-edge.com
-  - DOMAIN,meta-ohttp-config-prod.fastly-edge.com
-  # ---- WhatsApp 集成 (Muse 可运行在 WhatsApp 内) ----
-  - DOMAIN-SUFFIX,whatsapp.com
-  - DOMAIN-SUFFIX,whatsapp.net
-  # ---- Meta 账号体系 / Facebook / Instagram 集成 ----
+  # ---- Meta 账号与社交基础设施 ----
+  - DOMAIN-SUFFIX,meta.com
+  - DOMAIN-SUFFIX,atmeta.com
   - DOMAIN-SUFFIX,facebook.com
   - DOMAIN-SUFFIX,facebook.net
   - DOMAIN-SUFFIX,fbcdn.net
+  - DOMAIN-SUFFIX,fb.com
   - DOMAIN-SUFFIX,fbsbx.com
   - DOMAIN-SUFFIX,fbpigeon.com
-  - DOMAIN-SUFFIX,fb.com
-  - DOMAIN-SUFFIX,instagram.com
-  - DOMAIN-SUFFIX,cdninstagram.com
-  # ---- 本地补充 ----
+  - DOMAIN-SUFFIX,facebook-dns.com
   - DOMAIN-SUFFIX,messenger.com
   - DOMAIN-SUFFIX,threads.net
+  - DOMAIN-SUFFIX,instagram.com
+  - DOMAIN-SUFFIX,cdninstagram.com
+  - DOMAIN-SUFFIX,whatsapp.com
+  - DOMAIN-SUFFIX,whatsapp.net
+  - DOMAIN-SUFFIX,wa.me
+  # ---- 隐私中继 / 网关端点（精确域名） ----
+  - DOMAIN,hatch.ecto1.ai
+  - DOMAIN,meta-ohttp-config-prod.fastly-edge.com
+  - DOMAIN,meta-ohttp-relay-dev.fastly-edge.com
+  - DOMAIN,meta-ohttp-relay-prod.fastly-edge.com
+  - DOMAIN,meta.hpke-keys.privacy-gateway.cloudflare.com
+  - DOMAIN,meta.privacy-gateway.cloudflare.com
