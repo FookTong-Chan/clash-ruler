@@ -39,10 +39,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 sync_from_upstream.py --no-push
 
-      - name: 同步 Meta Muse 规则 → 重建 mrs → 本地提交
+      - name: 同步 Meta Muse 规则（逆向取证源）→ 重建 mrs → 本地提交
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python3 sync_muse.py --no-push
+        run: python3 sync_teardown.py --no-push
 
       - name: 推送
         run: |
@@ -67,6 +67,8 @@ jobs:
             echo "| ${name} | ${d} | ${i} |" >> $GITHUB_STEP_SUMMARY
           done
           d=$(grep -c '^DOMAIN' rule-provider/meta-muse-rules.list || echo 0)
-          echo "| Meta Muse AI | ${d} | 0 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Meta Muse（Meta 自有域） | ${d} | 0 |" >> $GITHUB_STEP_SUMMARY
+          d=$(grep -c '^DOMAIN' rule-provider/meta-muse-3p-rules.list || echo 0)
+          echo "| Muse 第三方域 | ${d} | 0 |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "最新提交：\`$(git log -1 --format='%h %s')\`" >> $GITHUB_STEP_SUMMARY

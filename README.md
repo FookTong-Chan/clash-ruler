@@ -19,12 +19,22 @@
 
 ## Meta Muse 规则
 
-`MuseAI.list` 是 Loon 格式（`DOMAIN-SUFFIX,xxx` 不带策略名），与 mihomo 的 classical 列表一致，转换时只做小写化与去重。内容分两部分：
+主源是 [mahdi-salmanzade/meta-muse-teardown](https://github.com/mahdi-salmanzade/meta-muse-teardown) 的**二进制逆向取证**：从 macOS / iOS / Android 三份样本的 `16-network-*.txt` 里正则提取静态分析出的 host，再按角色归类。二手整理源 [juner922/muse-loon-rules](https://github.com/juner922/muse-loon-rules) 只用来补前者的文本里没直接出现的裸域（`atmeta.com` / `fb.com` / `whatsapp.net` 等）。
 
-- **Muse 专用**：`muse.ai` / `museai.com` / `metaaivm.com` / `metaaiusercontent.com` / `ecto1usercontent.com`，以及 6 个精确域名（OHTTP 中继、隐私网关等 Cloudflare/Fastly 端点）
-- **Meta 账号与社交基础设施**：`meta.com` / `facebook.com` / `instagram.com` / `whatsapp.com` / `fbcdn.net` / `fbsbx.com` 等
+**主集 `meta-muse`（Meta 自有域，建议美国节点）**
 
-本地另补了 `messenger.com`、`threads.net`（Muse 可在 WhatsApp / Messenger 内运行，threads 同属 Meta 社交域）。
+- **Muse 专用**：`muse.ai` / `museai.com` / `meta.ai` / `metaaivm.com` / `metaaiusercontent.com` / `ecto1usercontent.com`
+  取证里出现的实际端点：`agent.meta.ai`、`api.meta.ai`、`hatch-api.meta.ai`（REST "Stefi"）、`rupload.meta.ai`、`hatch.metaaivm.com`（VM 网关 WSS `/v1/noise`）、`shortwave.facebook.com`（语音 ASR）。
+- **Meta 账号与社交基础设施**：`meta.com` / `facebook.com` / `facebook.net` / `fbcdn.net` / `fb.com` / `fbsbx.com` / `fbpigeon.com` / `facebook-dns.com` / `messenger.com` / `threads.net` / `instagram.com` / `whatsapp.com` / `whatsapp.net` / `wa.me`
+- **隐私中继（精确域名）**：`meta-ohttp-{relay,config}-prod.fastly-edge.com`、`meta-ohttp-relay-dev.fastly-edge.com`、`meta.privacy-gateway.cloudflare.com`、`meta.hpke-keys.privacy-gateway.cloudflare.com`、`hatch.ecto1.ai`
+
+**可选集 `meta-muse-3p`（第三方域）**
+
+Muse 代码路径能触达的非 Meta 域：Play 服务与 FCM（Android 必需）、Stripe 支付、连接器 OAuth（Spotify / Peloton / HealthEx / Notion / Calendly）、渲染 CDN（jsDelivr / cdnjs / unpkg）、VM 网关白名单（`hatch.one` / `willow606.com` / `exe.xyz` / `multimango.com` / `pariscope.dev`）、Sigstore 信任根。
+
+**默认不挂载它**——这些域跟你现有的分流容易打架（比如 `google.com` 会把 Google 全家卷进去）。需要哪个单独抄一条就行。
+
+**明确剔除的**（代理过去只会添乱，脚本里写了剔除理由）：APNs 推送（`push.apple.com`，国内可直连）、NTP 校时（`time.akamai.com` / `time.android.com`）、CA 的 CRL/OCSP、证书固定自测页、通配 DNS 测试域（`nip.io` 一类）、Meta 家族里与 Muse 无关的品牌域（Oculus / Workplace / Internet.org / freebasics 等）、员工专用的 `internalfb.com`。
 
 > **Muse 有地区限制**：域名全走代理也可能提示"尚未在你的国家或地区开放"——那是出口 IP 判定，机房 IP、广播 IP 会被拦，需要美区原生/家宽节点。规则集只能保证域名走对，保证不了地区。
 
@@ -40,12 +50,15 @@ rule-provider/
 ├── hk-finance-rules.list    5.4 KB   香港组规则
 ├── hk-finance-domains.mrs   1.1 KB   香港组域名 mrs
 ├── hk-finance-ipcidr.mrs    361 B    香港组 IP 段 mrs
-├── meta-muse-rules.yaml     1.5 KB   Meta Muse AI（推荐用这个）
-├── meta-muse-rules.list     763 B    Meta Muse AI 规则
-└── meta-muse-domains.mrs    353 B    Meta Muse AI 域名 mrs
+├── meta-muse-rules.yaml     1.7 KB   Meta Muse AI（推荐用这个）
+├── meta-muse-rules.list     900 B    Meta Muse AI 规则
+├── meta-muse-domains.mrs    383 B    Meta Muse AI 域名 mrs
+├── meta-muse-3p-rules.yaml  1.5 KB   Muse 第三方域（可选，默认不挂）
+├── meta-muse-3p-rules.list  800 B    Muse 第三方域规则
+└── meta-muse-3p-domains.mrs 427 B    Muse 第三方域 mrs
 ```
 
-> `meta-muse` 只有域名、不含 IP 段，所以没有对应的 `-ipcidr.mrs`——构建脚本会跳过空类型，不会产出 0 条目的空壳文件。
+> Muse 两组都只有域名、不含 IP 段，所以没有对应的 `-ipcidr.mrs`——构建脚本会跳过空类型，不会产出 0 条目的空壳文件。
 
 ## 用法
 
@@ -112,11 +125,17 @@ rules:
 
 ```bash
 python3 sync_from_upstream.py            # 金融：抓取 + 归类 + 构建 + 推送
-python3 sync_muse.py                     # Meta Muse：抓取 + 构建 + 推送
+python3 sync_teardown.py                 # Meta Muse：抓取 + 归类 + 构建 + 推送
 # 两者都支持 --dry-run / --no-push
 ```
 
-`sync_from_upstream.py` 每次从 `koo17173/rule-set@main` 拉取 6 个金融文件，按机构归类后重建全部 mrs；`sync_muse.py` 从 `juner922/muse-loon-rules@main` 拉取 `MuseAI.list`。两者都**仅在内容有变化时**才 commit + push，抓取失败或解析为空时直接中止，不会用空规则集覆盖已有内容。
+`sync_from_upstream.py` 每次从 `koo17173/rule-set@main` 拉取 6 个金融文件，按机构归类后重建全部 mrs；`sync_teardown.py` 整仓 codeload 拉取逆向取证源，提取 4 个 `16-network-*.txt` 里的 host 后归类。两者都**仅在内容有变化时**才 commit + push，抓取失败或结果为空时直接中止，不会用空规则集覆盖已有内容。
+
+Muse 脚本的三条经验：
+
+- 从自由文本里抠域名，光靠形状正则会收进一堆文件名（`01-authenticity.txt`）和 RPC 方法名（`activity.log`）——必须卡 TLD 白名单。
+- 归类表要留"明确剔除 + 剔除理由"，剔除项单独打印。取证文本里 APNs、NTP、CRL、测试域都跟 Muse 沾边，全收进去规则集就废了。
+- 父域规约要看宽窄：`accounts.google.com → google.com` 合理，`cdnjs.cloudflare.com → cloudflare.com` 就把 CF 官网整个卷进来了。
 
 **不需要预装 mihomo** —— 脚本按平台自动下载内核到项目根目录（已 gitignore）。
 

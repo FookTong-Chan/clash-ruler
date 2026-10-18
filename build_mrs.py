@@ -28,6 +28,7 @@ SETS = [
     ("cn", "cn-finance-rules.list", "cn-finance"),
     ("hk", "hk-finance-rules.list", "hk-finance"),
     ("meta", "meta-muse-rules.list", "meta-muse"),
+    ("3p", "meta-muse-3p-rules.list", "meta-muse-3p"),
 ]
 
 
