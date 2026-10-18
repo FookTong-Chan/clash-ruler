@@ -94,6 +94,12 @@ def load(list_path):
         r = line.strip()
         if not r or r.startswith("#"):
             continue
+        # 去掉行内注释：yaml 版允许 `- DOMAIN-SUFFIX,x  # 说明`，
+        # 但转成 list 时若不过滤，注释会被当成域名的一部分，
+        # 生成一条永远匹配不上的废规则（wifi-calling 踩过这个坑）。
+        r = r.split("#", 1)[0].strip()
+        if not r:
+            continue
         kind = r.split(",")[0]
         if kind == "IP-CIDR":
             cidr = r.split(",", 1)[1].replace(",no-resolve", "")

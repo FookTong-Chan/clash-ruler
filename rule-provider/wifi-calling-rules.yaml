@@ -1,60 +1,65 @@
-# WiFi Calling (VoWiFi / WLAN 通话) 规则集
+# WiFi Calling (VoWiFi / WLAN 通话) 规则集 —— 纯域名版
 #
-# 场景：海外 eSIM / 实体卡（giffgaff、Vodafone UK、CMLinkUK、香港 CSL、
-#       美国 T-Mobile 等）在国内漫游时，靠 WiFi Calling 保号、接英国/美国
-#       本地来电。ePDG 是运营商侧的 IMS 网关，必须让它的流量走「号码归属国」
-#       的代理节点，否则 IMS 注册不上，开关打不开。
+# 为什么只有域名、没有 IP 段：
+#   mrs 的 behavior 是单值编码，domain 和 ipcidr 必须分文件，做不到一个 mrs。
+#   但 ePDG 的域名规则会先于 IP 规则命中（mihomo 按 rules 顺序匹配），
+#   IP 段只是"域名没匹配上"时的兜底，砍掉不影响功能——所以这一个 mrs 就够用。
+#   需要 IP 兜底的，见 README「WiFi Calling 规则」一节。
+#
+# 场景：海外 eSIM / 实体卡在国内漫游时，靠 WiFi Calling 保号、接本地来电。
+# ePDG 是运营商侧的 IMS 网关，它的流量必须走「号码归属国」的代理节点，
+# 否则 IMS 注册不上、开关打不开。
+#
+# 已覆盖的运营商（MCC/MNC 仅供对照，实际匹配靠下面那条标准后缀）：
+#   中国香港  CSL / 3HK / SmarTone / CMHK      MCC 454
+#   英国      giffgaff / O2 UK                  MCC 234  MNC 010
+#   英国      Vodafone UK                       MCC 234  MNC 015
+#   缅甸      Atom（原 Telenor Myanmar）         MCC 414  MNC 06
+#   德国      Vodafone                           MCC 262  MNC 002 / 004 / 009
+#   美国      T-Mobile                          MCC 310  MNC 240 / 260
+#   → 其他国家/运营商的 eSIM 同样生效，无需改规则
 #
 # 三个必须知道的坑：
 #   1. ePDG 走 IKE(UDP 500) + IPsec NAT-T(UDP 4500)，代理节点必须支持 UDP，
-#      UDP 被禁的节点（部分机场/中转）必然失败。
+#      部分机场/中转禁 UDP，必然失败。
 #   2. fake-ip 模式下必须把 +.pub.3gppnetwork.org 加进 fake-ip-filter！
 #      ePDG 域名由系统层（IPSec 客户端）解析，不经过应用层代理，
 #      拿到的是 198.18.x.x 假 IP，域名规则一条都匹配不上。
-#   3. iOS 需要运营商版本 ≥ 58.0，或 iOS 17.4 以上；国产安卓的 IMS 普遍
+#   3. iOS 需要运营商版本 ≥ 58.0 或 iOS 17.4 以上；国产安卓的 IMS 普遍
 #      拉不起（一加/OPPO/小米实测失败），建议用 iPhone。
 #
+# 德国 Vodafone 专属坑：epdg.epc.mnc002.mcc262.pub.3gppnetwork.org 这个域名
+# 很多公共 DNS 解析不出来，表现为节点、UDP、规则都对了还是注册不上。
+# 解法是在 OpenClash 的 hosts 里固定一个 IP（139.7.117.168/169/170 三选一，
+# 不稳定时换一个）：
+#   hosts:
+#     "epdg.epc.mnc002.mcc262.pub.3gppnetwork.org": "139.7.117.168"
+#
 # 拉起流程：关 WiFi 与 WiFi Calling 开关 → 开飞行模式 → 关掉国内 SIM →
-#           连上代理 → 打开 giffgaff 的 WiFi Calling 开关 → 运营商名变成
-#           giffgaff 即成功，之后可恢复飞行模式。
+#           连上代理 → 打开对应运营商的 WiFi Calling 开关 → 运营商名变成
+#           该运营商即成功，之后可恢复飞行模式。
 #
 # 条目来源（均为实测，非猜测）：
-#   cxorz.com/blog/giffgaff-on-android        路由器 tcpdump + Wireshark 抓包
-#   blog.baicai.me/article/2025/giffgaff_wificall/
-#   linux.do/t/topic/2680605                  fake-ip-filter 结论
-#   bunizao/TutuBetterRules（RuleList/DOMAlN/）CSL / T-Mobile 地区列表
+#   cxorz.com/blog/giffgaff-on-android    路由器 tcpdump + Wireshark 抓包
+#   blog.baicai.me、chenglun11.github.io、laotao.cc   海外 VoWiFi 排障指南
+#   linux.do/t/topic/2680605              fake-ip-filter 结论
+#   blog.linux-ng.de（德国 Vodafone 三个 MNC）
+#   bunizao/TutuBetterRules               CSL / T-Mobile 地区列表
+#   Netify / IP2Location 移动网关数据      Atom MNC、德国 Vodafone IP
 #
-# 统计：DOMAIN-SUFFIX 6 / DOMAIN-KEYWORD 0 / IP-CIDR 6
+# 统计：DOMAIN-SUFFIX 5
 
 rules:
   # ---- 全球 ePDG 兜底（3GPP 标准命名，一条覆盖所有国家）----
   # epdg.epc.mncXXX.mccYYY.pub.3gppnetwork.org 是标准格式，
-  # 用这一条就覆盖了已列出和未列出的所有运营商 eSIM。
+  # 这一条就覆盖了上面列出的和没列出的所有运营商 eSIM。
   - DOMAIN-SUFFIX,pub.3gppnetwork.org
 
-  # ---- 英国 O2 UK / giffgaff（MCC234 MNC010）----
-  # giffgaff 是 O2 的 MVNO，ePDG 与 O2 同域，这是抓包实测的那一条
-  - DOMAIN-SUFFIX,ss.epdg.epc.mnc010.mcc234.pub.3gppnetwork.org
-  - IP-CIDR,87.194.0.0/16,no-resolve
-
-  # ---- 英国 Vodafone UK（MCC234 MNC015）----
-  - DOMAIN-SUFFIX,epdg.epc.mnc015.mcc234.pub.3gppnetwork.org
-  - DOMAIN-SUFFIX,ss.epdg.epc.geo.mnc015.mcc234.pub.3gppnetwork.org
-  - DOMAIN-SUFFIX,entsrv-uk.vodafone.com
-  - DOMAIN-SUFFIX,vuk-gto.prod.ondemandconnectivity.com
-  - IP-CIDR,88.82.0.0/19,no-resolve
-
-  # ---- 英国 CMLinkUK（EE 网络）----
-  - IP-CIDR,46.68.0.0/17,no-resolve
-
-  # ---- 香港 CSL（MCC454 MNC000）----
-  - DOMAIN-SUFFIX,ss.epdg.epc.mnc000.mcc454.pub.3gppnetwork.org
-
-  # ---- 美国 T-Mobile（MCC310 MNC240 / MNC260）----
-  - DOMAIN-SUFFIX,t-mobile.com
-  - IP-CIDR,66.94.0.0/19,no-resolve
-  - IP-CIDR,206.29.177.36/32,no-resolve
-  - IP-CIDR,208.54.0.0/16,no-resolve
+  # ---- 非标准域名的补充 ----
+  # 这三家不用 3gppnetwork.org 标准命名，只有单独列出才不漏
+  - DOMAIN-SUFFIX,t-mobile.com                          # 美国 T-Mobile
+  - DOMAIN-SUFFIX,entsrv-uk.vodafone.com                # 英国 Vodafone UK
+  - DOMAIN-SUFFIX,vuk-gto.prod.ondemandconnectivity.com # 英国 Vodafone UK
 
   # ---- Apple 地区检测 ----
   # WiFi Calling 拉起时系统会查这个域名判断所在地区，被墙会导致判定失败
