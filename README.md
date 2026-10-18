@@ -6,7 +6,8 @@
 |---|---|---|
 | **cn-finance** | [koo17173/rule-set](https://github.com/koo17173/rule-set) 按机构拆分 | `DIRECT` 直连 |
 | **hk-finance** | 同上 | 代理节点 |
-| **meta-muse** | [juner922/muse-loon-rules](https://github.com/juner922/muse-loon-rules) | 美国节点 |
+| **meta-muse** | [mahdi-salmanzade/meta-muse-teardown](https://github.com/mahdi-salmanzade/meta-muse-teardown) 二进制逆向取证 | 美国节点 |
+| **wifi-calling** | 社区实测整理（无统一上游，本地维护） | 号码归属国节点 |
 
 ## 金融规则拆分逻辑
 
@@ -38,6 +39,47 @@ Muse 代码路径能触达的非 Meta 域：Play 服务与 FCM（Android 必需�
 
 > **Muse 有地区限制**：域名全走代理也可能提示"尚未在你的国家或地区开放"——那是出口 IP 判定，机房 IP、广播 IP 会被拦，需要美区原生/家宽节点。规则集只能保证域名走对，保证不了地区。
 
+## WiFi Calling 规则
+
+海外 eSIM / 实体卡（giffgaff、Vodafone UK、CMLinkUK、香港 CSL、美国 T-Mobile）在国内漫游时，靠 WiFi Calling 保号、接本地来电。ePDG 是运营商侧的 IMS 网关，它的流量必须走**号码归属国**的节点，否则 IMS 注册不上、开关打不开。
+
+| 运营商 | 归属 | 覆盖条目 |
+|---|---|---|
+| **全球 ePDG 兜底** | 所有国家 | `DOMAIN-SUFFIX,pub.3gppnetwork.org` |
+| **英国 O2 UK / giffgaff** | 英国 | `epdg.epc.mnc010.mcc234.pub.3gppnetwork.org`、`87.194.0.0/16` |
+| **英国 Vodafone UK** | 英国 | `mnc015` 系列 + `entsrv-uk.vodafone.com` + `vuk-gto.prod.ondemandconnectivity.com` + `88.82.0.0/19` |
+| **英国 CMLinkUK（EE）** | 英国 | `46.68.0.0/17` |
+| **香港 CSL** | 中国香港 | `mnc000.mcc454` 系列 |
+| **美国 T-Mobile** | 美国 | `mnc240/mnc260` 系列 + `t-mobile.com` + 三个 IP 段 |
+| **Apple 地区检测** | — | `gspe1-ssl.ls.apple.com` |
+
+`pub.3gppnetwork.org` 那条后缀是关键：ePDG 的域名是 3GPP 标准命名（`epdg.epc.mncXXX.mccYYY.pub.3gppnetwork.org`），一条就覆盖了已列出和没列出的所有运营商，包括你以后新办的其他国家 eSIM。
+
+**三个坑，不解决一定失败**：
+
+1. **UDP**：ePDG 走 IKE（UDP 500）+ IPsec NAT-T（UDP 4500），节点不支持 UDP 就废了。部分机场和中转会禁 UDP。
+2. **fake-ip-filter 必须加** `+.pub.3gppnetwork.org`。ePDG 域名是系统层（IPSec 客户端）解析的，不经过应用层代理；fake-ip 模式下它拿到的是 `198.18.x.x` 假 IP，域名规则一条都匹配不上。这条是 linux.do 上实测出来的结论，最难排查。
+3. **设备**：iOS 需要运营商版本 ≥ 58.0 或 iOS 17.4+。国产安卓（一加 / OPPO / 小米，实测配了 Shizuku + Pixel IMS 也不行）的 IMS 普遍拉不起，建议用 iPhone。
+
+**拉起流程**：关 WiFi 和 WiFi Calling 开关 → 开飞行模式 → 关掉国内 SIM → 连上代理 → 打开 giffgaff 的 WiFi Calling 开关 → 运营商名变成 giffgaff 即成功，之后可以恢复。
+
+OpenClash 配法：
+
+```yaml
+# 1. DNS 设置 → Fake-IP-Filter 里加这一行（必须）
+fake-ip-filter:
+  - "+.pub.3gppnetwork.org"
+
+rule-providers:
+  📞 WiFi Calling: {<<: *Classicals, url: "https://cdn.jsdelivr.net/gh/FookTong-Chan/clash-ruler@main/rule-provider/wifi-calling-rules.yaml"}
+
+rules:
+  # 放在 GeoCN / MATCH 之前，指向英国（或号码归属国）节点
+  - RULE-SET,📞 WiFi Calling,🇬🇧 英国
+```
+
+条目来源均为实测而非猜测：路由器 tcpdump + Wireshark 抓包（cxorz.com）、白菜博客、linux.do 讨论、[bunizao/TutuBetterRules](https://github.com/bunizao/TutuBetterRules) 的 CSL / T-Mobile 地区列表。这份规则集没有统一上游，是本地维护的，不在自动同步范围内。
+
 ## 文件
 
 ```
@@ -55,7 +97,11 @@ rule-provider/
 ├── meta-muse-domains.mrs    383 B    Meta Muse AI 域名 mrs
 ├── meta-muse-3p-rules.yaml  1.5 KB   Muse 第三方域（可选，默认不挂）
 ├── meta-muse-3p-rules.list  800 B    Muse 第三方域规则
-└── meta-muse-3p-domains.mrs 427 B    Muse 第三方域 mrs
+├── meta-muse-3p-domains.mrs 427 B    Muse 第三方域 mrs
+├── wifi-calling-rules.yaml  2.3 KB   WiFi Calling（推荐用这个）
+├── wifi-calling-rules.list  850 B    WiFi Calling 规则
+├── wifi-calling-domains.mrs 256 B    WiFi Calling 域名 mrs
+└── wifi-calling-ipcidr.mrs  106 B    WiFi Calling IP 段 mrs
 ```
 
 > Muse 两组都只有域名、不含 IP 段，所以没有对应的 `-ipcidr.mrs`——构建脚本会跳过空类型，不会产出 0 条目的空壳文件。
