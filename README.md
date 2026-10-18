@@ -49,6 +49,17 @@ rule-provider/
 
 ## 用法
 
+### 国内拉不动 raw 时，换 jsDelivr
+
+把链接里的 `https://raw.githubusercontent.com/FookTong-Chan/clash-ruler/main/` 整段替换成
+`https://cdn.jsdelivr.net/gh/FookTong-Chan/clash-ruler@main/` 即可，其余路径不变：
+
+```
+https://cdn.jsdelivr.net/gh/FookTong-Chan/clash-ruler@main/rule-provider/meta-muse-rules.yaml
+```
+
+`.mrs` 同样适用。路由器在国内直连 raw 常超时/被reset，建议直接用 CDN 版本。
+
 ### 方式一：yaml + classical（推荐）
 
 一条规则集搞定，`DOMAIN-KEYWORD` 兜底规则也能用：
