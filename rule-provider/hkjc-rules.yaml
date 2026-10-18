@@ -1,0 +1,22 @@
+# HKJC 香港赛马会规则集
+# 域名来源：本地 HKJC-v2 / HKJC项目 代码实际请求域名
+# 覆盖：bet.hkjc.com（赔率）、racing.hkjc.com（赛事）、info.cld.hkjc.com、官网
+# 统计：DOMAIN 4 / DOMAIN-SUFFIX 5 / DOMAIN-KEYWORD 2
+
+rules:
+  # ---- 精确域名 ----
+  - DOMAIN,bet.hkjc.com
+  - DOMAIN,racing.hkjc.com
+  - DOMAIN,info.cld.hkjc.com
+  - DOMAIN,www.hkjc.com
+
+  # ---- 域名后缀 ----
+  - DOMAIN-SUFFIX,hkjc.com
+  - DOMAIN-SUFFIX,hkjc.com.hk
+  - DOMAIN-SUFFIX,hkjc.co
+  - DOMAIN-SUFFIX,jockeyclub.com.hk
+  - DOMAIN-SUFFIX,thehongkongjockeyclub.com
+
+  # ---- 域名关键词（兜底） ----
+  - DOMAIN-KEYWORD,hkjc
+  - DOMAIN-KEYWORD,jockeyclub
