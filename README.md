@@ -9,6 +9,8 @@
 | **meta-muse** | [mahdi-salmanzade/meta-muse-teardown](https://github.com/mahdi-salmanzade/meta-muse-teardown) 二进制逆向取证 | 美国节点 |
 | **wifi-calling** | 社区实测整理（无统一上游，本地维护） | 号码归属国节点 |
 | **iptv** | 本机播放列表 GNTV.m3u + 港澳台.txt 提取 | 美国 VPS（无限流量） |
+| **streaming** | [blackmatrix7/ios_rule_script](https://github.com/blackmatrix7/ios_rule_script) | 美国/对应区节点 |
+| **game** | 同上 | 美国/对应区节点 |
 
 ## 金融规则拆分逻辑
 
@@ -119,6 +121,20 @@ rules:
 
 > 播放列表里的 `video://` 链接（PotPlayer 专用协议）里的域名也提取了——只要播放器走 TUN 就能接管，直连模式下这些不走代理。
 
+## 流媒体与游戏规则
+
+从 [blackmatrix7/ios_rule_script](https://github.com/blackmatrix7/ios_rule_script)（6.6k★，Surge/Clash/QX 三端规则库）同步，分两组：
+
+**`streaming`（21 类，512 域名 + 23 IP 段）**：Netflix、Disney+、HBO（HBO/HBOAsia/HBOHK/HBOUSA）、Prime Video、Spotify、TIDAL、Deezer、Qobuz、Twitch、Vimeo、Dailymotion、巴哈姆特、LiTV、friDay、AbemaTV、Niconico、Emby、BBC、CNN
+
+**`game`（10 类 + 本地补充，455 域名 + 24 IP 段）**：Steam 国际、PlayStation、Xbox、任天堂、EA、育碧、暴雪、R 星、Origin、Epic
+
+**为什么没有 SteamCN**：国服 Steam 的域名在国内，走直连才对。代理过去反而慢，而且规则里混着 `steamcontent.com` 这类下载 CDN，直连体验更好。想要的话自己把 `SteamCN` 加进 `sync_blackmatrix7.py` 的 `GROUPS`。
+
+**本地补充**：育碧上游只收了一条 CDN 精确域名（`uplaypc-s-ubisoft.cdn.ubi.com`），Ubisoft Connect 的官方域反而没有，补了 `ubi.com` / `ubisoft.com`。补充项写在脚本的 `EXTRA_RULES` 里，上游更新不会覆盖。
+
+真机验证：流媒体 20/20（Netflix / Disney+ / HBO Max / Prime Video / Spotify / Twitch / AbemaTV / Niconico / 巴哈姆特 / BBC / CNN 全命中），游戏 18/18（补了育碧后复测通过），baidu.com 未误伤。
+
 ## 文件
 
 ```
@@ -144,7 +160,15 @@ rule-provider/
 ├── iptv-rules.list          3.3 KB   IPTV 规则
 ├── iptv-domains.mrs         1.6 KB   IPTV 域名 mrs
 ├── iptv-ipcidr.mrs          205 B    IPTV 裸 IP 源网段 mrs（必须一起挂）
-└── iptv-sources.txt         2.5 KB   从播放列表提取的 host 清单（可追溯）
+├── iptv-sources.txt         2.5 KB   从播放列表提取的 host 清单（可追溯）
+├── streaming-rules.yaml     15 KB    流媒体+音乐（推荐用这个）
+├── streaming-rules.list     13 KB    流媒体+音乐规则
+├── streaming-domains.mrs    5.0 KB   流媒体域名 mrs
+├── streaming-ipcidr.mrs     154 B    流媒体 IP 段 mrs
+├── game-rules.yaml          13 KB    游戏平台（推荐用这个）
+├── game-rules.list          12 KB    游戏平台规则
+├── game-domains.mrs         4.9 KB   游戏平台域名 mrs
+└── game-ipcidr.mrs          156 B    游戏平台 IP 段 mrs
 ```
 
 > Muse 与 WiFi Calling 两组都只有域名、不含 IP 段，所以没有对应的 `-ipcidr.mrs`——构建脚本会跳过空类型，不会产出 0 条目的空壳文件。
@@ -225,6 +249,8 @@ Muse 脚本的三条经验：
 - 从自由文本里抠域名，光靠形状正则会收进一堆文件名（`01-authenticity.txt`）和 RPC 方法名（`activity.log`）——必须卡 TLD 白名单。
 - 归类表要留"明确剔除 + 剔除理由"，剔除项单独打印。取证文本里 APNs、NTP、CRL、测试域都跟 Muse 沾边，全收进去规则集就废了。
 - 父域规约要看宽窄：`accounts.google.com → google.com` 合理，`cdnjs.cloudflare.com → cloudflare.com` 就把 CF 官网整个卷进来了。
+
+`sync_blackmatrix7.py` 每次拉取 32 个类别（流媒体 21 / 游戏 10），合并去重后重建 mrs，**仅在内容有变化时**才 commit + push。任一类别抓取失败或合并为空直接中止。
 
 **不需要预装 mihomo** —— 脚本按平台自动下载内核到项目根目录（已 gitignore）。
 
