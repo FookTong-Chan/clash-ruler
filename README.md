@@ -8,6 +8,7 @@
 | **hk-finance** | 同上 | 代理节点 |
 | **meta-muse** | [mahdi-salmanzade/meta-muse-teardown](https://github.com/mahdi-salmanzade/meta-muse-teardown) 二进制逆向取证 | 美国节点 |
 | **wifi-calling** | 社区实测整理（无统一上游，本地维护） | 号码归属国节点 |
+| **iptv** | 本机播放列表 GNTV.m3u + 港澳台.txt 提取 | 美国 VPS（无限流量） |
 
 ## 金融规则拆分逻辑
 
@@ -96,6 +97,28 @@ rules:
 
 条目来源均为实测而非猜测：路由器 tcpdump + Wireshark 抓包（cxorz.com）、白菜博客、linux.do 讨论、[bunizao/TutuBetterRules](https://github.com/bunizao/TutuBetterRules) 的 CSL / T-Mobile 地区列表、德国 Vodafone 的 ePDG IP 来自 Netify 移动网关数据。这份规则集没有统一上游，是本地维护的，不在自动同步范围内。
 
+## IPTV 规则
+
+从你的两份播放列表（`GNTV.m3u` 国际/港台/地方频道 + `港澳台.txt` 965 条备用源）提取，产出 **124 个域名 + 33 个 IP 段**，统一走美国 VPS 这类无限流量出口。
+
+**为什么需要 IP 段**：列表里有大量「裸 IP 直连」源（如 `http://211.72.174.95:8116/0.ts` 是台视/公视/民视），没有域名，域名规则覆盖不到，只能按 IP 段兜底。TUN 模式下这些连接由 IP 规则接管，所以 `-ipcidr.mrs` 那份也必须挂。
+
+**域名规约的讲究**（`build_iptv.py` 里实现了）：
+
+| 情况 | 处理 | 例子 |
+|---|---|---|
+| 一般聚合服务 | 取注册域，多个子域一条覆盖 | `php.jdshipin.com` → `jdshipin.com` |
+| CDN / 云平台 | 保留完整子域，整域太宽 | `d2jc41c1shgcol.cloudfront.net` 不砍成 `cloudfront.net` |
+| 已有整域规则集的 | 只保留直播源那一条 | 只收 `www.youtube.com`，不动 youtube.com 整域 |
+| 多段公共后缀 | 取三段 | `hkcable.com.hk` 不被砍成 `com.hk` |
+| 省级二级域 | 取三段 | `setv.sh.cn` 不被砍成 `sh.cn`；`trt.com.tr` 同理 |
+
+**规则位置是成败关键**：IPTV 规则必须放在 `GeoCN` / `YouTube` / `GitHub` / `MATCH` **之前**。国内地方台的域名（`cztv.com`、`nmtv.cn`、`setv.sh.cn` 等）都在 ChinaMax 里，被直连规则先接走就看不到了；直播源用的 YouTube / raw.githubusercontent.com 同理。
+
+**更新方式**：换了播放列表后跑一次 `python3 build_iptv.py <新列表文件>`，脚本会重新提取、规约、重建 mrs、有变化就自动提交推送。源清单留在 `iptv-sources.txt` 里可追溯。
+
+> 播放列表里的 `video://` 链接（PotPlayer 专用协议）里的域名也提取了——只要播放器走 TUN 就能接管，直连模式下这些不走代理。
+
 ## 文件
 
 ```
@@ -116,7 +139,12 @@ rule-provider/
 ├── meta-muse-3p-domains.mrs 427 B    Muse 第三方域 mrs
 ├── wifi-calling-rules.yaml  3.8 KB   WiFi Calling（推荐用这个）
 ├── wifi-calling-rules.list  287 B    WiFi Calling 规则
-└── wifi-calling-domains.mrs 169 B    WiFi Calling 域名 mrs（纯域名，就这一个）
+├── wifi-calling-domains.mrs 169 B    WiFi Calling 域名 mrs（纯域名，就这一个）
+├── iptv-rules.yaml          3.4 KB   IPTV 港澳台+国际+地方台（推荐用这个）
+├── iptv-rules.list          3.3 KB   IPTV 规则
+├── iptv-domains.mrs         1.6 KB   IPTV 域名 mrs
+├── iptv-ipcidr.mrs          205 B    IPTV 裸 IP 源网段 mrs（必须一起挂）
+└── iptv-sources.txt         2.5 KB   从播放列表提取的 host 清单（可追溯）
 ```
 
 > Muse 与 WiFi Calling 两组都只有域名、不含 IP 段，所以没有对应的 `-ipcidr.mrs`——构建脚本会跳过空类型，不会产出 0 条目的空壳文件。
