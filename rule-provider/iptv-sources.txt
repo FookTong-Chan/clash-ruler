@@ -1,0 +1,163 @@
+# IPTV 播放列表提取的 host 清单
+# 域名 124 个 / 裸 IP 34 个
+
+freetv.fun	163
+jdshipin.com	79
+jiduo.me	70
+m16tv.cfd	39
+aktv.top	34
+iill.top	24
+163189.xyz	20
+iptv8k.top	15
+amagi.tv	14
+rr.kg	13
+rakuten.tv	12
+yximgs.com	12
+www.youtube.com	11
+1678520.xyz	10
+cc.cd	10
+indevs.in	10
+wouu.net	9
+cztv.com	8
+raw.githubusercontent.com	8
+ysift55.xyz	8
+4666888.xyz	7
+d2jc41c1shgcol.cloudfront.net	7
+ifeng.com	7
+jydjd.top	7
+vpstv.net	7
+cgtn.com	6
+kylintv.tv	6
+d4whmvwm0rdvi.cloudfront.net	5
+itv888.vip	5
+nmtv.cn	5
+ottb.xyz	5
+asuscomm.com	4
+cztvcloud.com	4
+d2e1asnsl7br7b.cloudfront.net	4
+hidns.vip	4
+italkbbtv.com	4
+live4play.uk	4
+xiangxiws.vip	4
+xmzb.xyz	4
+67890123.cn	3
+dpdns.org	3
+epg.pw	3
+faintv.com	3
+ignorelist.com	3
+iok.la	3
+nntv.cn	3
+ottera.tv	3
+wo.xiang.lai.ge.bi.jiao.chang.de.yu.ming.wan.wan.jie.xi.bu.zhi.dao.ke.bu.ke.xing.hk3.345888.xyz.cdn.cloudflare.net	3
+amtb.cn	2
+cloudcdn.me	2
+dbrb49pjoymg4.cloudfront.net	2
+gztv.com	2
+hkcable.com.hk	2
+hkstv.tv	2
+iactive-clink.com	2
+iiiya.cn	2
+its-newid.net	2
+mine.nu	2
+nbs.cn	2
+rttv.com	2
+terrykang.cn	2
+wcetv.com	2
+0145451975a64b35866170fd2e8fa486.mediatailor.eu-west-1.amazonaws.com	1
+0593tv.cn	1
+111yao.cn	1
+51kandianshi.com	1
+52405cd167dc41c68edcaa842b916ccd.mediatailor.us-east-1.amazonaws.com	1
+52aad07d9d4f4d479d9b27e08ddf9e8b.mediatailor.us-west-2.amazonaws.com	1
+54045f0c40fd442c8b06df076aaf1e85.mediatailor.eu-west-1.amazonaws.com	1
+547f72e6652371c3.mediapackage.us-east-1.amazonaws.com	1
+5dae1f2dfec54d8f9992b7d2ac0bc627.mediatailor.us-west-2.amazonaws.com	1
+707626.xyz	1
+89514e758f814907be6d14bbc0aa66b7.mediatailor.us-west-2.amazonaws.com	1
+8a4805800dac428ebbf1d3cde0cdcf87.mediatailor.us-west-2.amazonaws.com	1
+9be783d652cd4b099cf63e1dc134c4a3.mediatailor.eu-west-1.amazonaws.com	1
+9f8e2ffcd87f4c469be7194e48f84874.mediatailor.us-west-2.amazonaws.com	1
+amdlive-ch01-ctnd-com.akamaized.net	1
+anren.live	1
+bestv.cn	1
+bozztv.com	1
+cdn-o2.me	1
+cnstream.top	1
+corusdigitaldev.com	1
+ctm.net	1
+d1d726ny1vain2.cloudfront.net	1
+d1sknsnbkyvie.cloudfront.net	1
+d39chvnxm26pgp.cloudfront.net	1
+d4ybyqrhce41r.cloudfront.net	1
+d7x8z4yuq42qn.cloudfront.net	1
+d9ssxzmclhfo4.cloudfront.net	1
+dqhxk7sbp7xog.cloudfront.net	1
+dyndns.tv	1
+ec613694ee5049d3b8f30913b619662e.mediatailor.us-west-2.amazonaws.com	1
+fee09fd665814f51b939b6d106cf5f66.mediatailor.eu-west-1.amazonaws.com	1
+filegear-sg.me	1
+france24.com	1
+getaj.net	1
+ghp.ci	1
+hebtv.com	1
+hkdvb.com	1
+hystudio.cn	1
+light-ott.net	1
+mediacdn.ru	1
+nhkworld.jp	1
+nmx1ota.akamaized.net	1
+ohoyee.com	1
+onrender.com	1
+osvs.asia	1
+rbmn-live.akamaized.net	1
+rocketdns.info	1
+senpay23.com	1
+setv.sh.cn	1
+shaoxing.com.cn	1
+trexlive.me	1
+trt.com.tr	1
+tubi.video	1
+tvfix.org	1
+v2h-cdn.com	1
+vs-hls-push-ww-live.akamaized.net	1
+warnermediacdn.com	1
+wsrtv.com.cn	1
+xhyx.gz.cn	1
+yiandrive.com	1
+yryyj.site	1
+
+# 裸 IP
+31.43.191.125
+37.27.111.214
+38.64.72.148
+43.129.81.169
+43.152.224.209
+50.7.234.10
+61.10.2.140
+61.10.2.141
+61.10.2.146
+61.216.67.119
+61.221.215.25
+65.108.74.147
+74.91.26.218
+101.35.240.114
+111.0.115.129
+115.190.252.60
+116.77.33.98
+119.32.12.17
+119.32.12.32
+120.198.95.220
+122.117.71.103
+122.152.202.33
+125.227.210.55
+148.135.34.95
+156.238.224.170
+173.208.234.146
+183.237.95.108
+185.243.7.13
+198.16.100.186
+202.168.187.208
+211.72.174.95
+218.202.220.2
+221.7.175.154
+222.128.55.152
