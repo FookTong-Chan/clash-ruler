@@ -31,6 +31,8 @@ SETS = [
     ("3p", "meta-muse-3p-rules.list", "meta-muse-3p"),
     ("wifi", "wifi-calling-rules.list", "wifi-calling"),
     ("iptv", "iptv-rules.list", "iptv"),
+    ("streaming", "streaming-rules.list", "streaming"),
+    ("game", "game-rules.list", "game"),
 ]
 
 
